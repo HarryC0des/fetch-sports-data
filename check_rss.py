@@ -13,8 +13,14 @@ RECORDS_FILE = DATA_DIR / "records.json"
 SEEN_FILE = DATA_DIR / "seen_guids.txt"
 
 # Load existing data
-records = json.loads(RECORDS_FILE.read_text()) if RECORDS_FILE.exists() else []
-seen_guids = set(SEEN_FILE.read_text().splitlines()) if SEEN_FILE.exists() else set()
+try:
+    records = json.loads(RECORDS_FILE.read_text()) if RECORDS_FILE.exists() and RECORDS_FILE.stat().st_size > 0 else []
+except (json.JSONDecodeError, ValueError):
+    records = []
+try:
+    seen_guids = set(SEEN_FILE.read_text().splitlines()) if SEEN_FILE.exists() and SEEN_FILE.stat().st_size > 0 else set()
+except (ValueError, OSError):
+    seen_guids = set()
 
 # RSS namespaces
 NS = {
