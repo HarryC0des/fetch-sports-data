@@ -35,34 +35,40 @@ resp.raise_for_status()
 
 root = ET.fromstring(resp.text)
 
-# Get latest 5 items
+# Get latest 5 items from RSS
 items = root.findall("./channel/item")[:5]
+
+# Get GUIDs from the first 5 items in records.json
+existing_guids = set(record["guid"] for record in records[:5])
 
 new_records = []
 
 for item in items:
     guid = item.findtext("guid")
-    if not guid or guid in seen_guids:
+    if not guid:
         continue
 
-    record = {
-        "guid": guid,
-        "title": item.findtext("title", "").strip(),
-        "link": item.findtext("link"),
-        "description": item.findtext("description", "").strip(),
-        "content_html": item.findtext("content:encoded", namespaces=NS),
-        "author": item.findtext("dc:creator", namespaces=NS),
-        "publisher": item.findtext("dc:publisher", namespaces=NS),
-        "source": item.findtext("source"),
-        "pub_date": item.findtext("pubDate"),
-        "ingested_at": datetime.utcnow().isoformat() + "Z",
-    }
+    # Add if it's a new GUID or if it's in the top 5 but not yet in records
+    if guid not in seen_guids or guid not in existing_guids:
+        record = {
+            "guid": guid,
+            "title": item.findtext("title", "").strip(),
+            "link": item.findtext("link"),
+            "description": item.findtext("description", "").strip(),
+            "content_html": item.findtext("content:encoded", namespaces=NS),
+            "author": item.findtext("dc:creator", namespaces=NS),
+            "publisher": item.findtext("dc:publisher", namespaces=NS),
+            "source": item.findtext("source"),
+            "pub_date": item.findtext("pubDate"),
+            "ingested_at": datetime.utcnow().isoformat() + "Z",
+        }
 
-    new_records.append(record)
-    seen_guids.add(guid)
+        new_records.append(record)
+        seen_guids.add(guid)
 
 if new_records:
-    records.extend(new_records)
+    # Insert new records at the top instead of appending to the bottom
+    records = new_records + records
 
     RECORDS_FILE.write_text(
         json.dumps(records, indent=2, ensure_ascii=False)
