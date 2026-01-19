@@ -5,5 +5,12 @@
         "take": "[Failed to generate take: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ListModels to see the list of available models and their supported methods.]",
         "original_title": "NBA trade deadline hot topics & unhappy teams with Jason Timpf + NFL Playoffs talk with Justin Boone",
         "generated_at": "2026-01-19T22:13:32.247730Z"
+    },
+    {
+        "guid": "512fad8f-2e63-4202-a299-f56e29da360b",
+        "link": "https://sports.yahoo.com/nba/breaking-news/article/hawks-kristaps-porzingis-and-zaccharie-risacher-sidelined-another-week-recovering-from-injuries-220603467.html",
+        "take": "[Failed to generate take: 400 API key not valid. Please pass a valid API key. [reason: \"API_KEY_INVALID\"\ndomain: \"googleapis.com\"\nmetadata {\n  key: \"service\"\n  value: \"generativelanguage.googleapis.com\"\n}\n, locale: \"en-US\"\nmessage: \"API key not valid. Please pass a valid API key.\"\n]]",
+        "original_title": "Hawks&#39; Kristaps Porzingis and Zaccharie Risacher sidelined another week recovering from injuries",
+        "generated_at": "2026-01-19T22:13:32.247709Z"
     }
 ]

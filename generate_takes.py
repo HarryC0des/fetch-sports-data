@@ -68,7 +68,7 @@ def generate_take():
 
     # 8. Generate content using the corrected model ID
     try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        model = genai.GenerativeModel('gemini-2.0-flash')
         response = model.generate_content(prompt)
         take_text = response.text.strip()
     except Exception as e:
