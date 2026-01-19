@@ -4,7 +4,12 @@ import google.generativeai as genai
 
 def generate_take():
     # 1. Setup Gemini API key
-    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+    api_key = os.getenv("GOOGLE_API_KEY")
+    if not api_key:
+        print("ERROR: GOOGLE_API_KEY environment variable is not set!")
+        return
+    
+    genai.configure(api_key=api_key)
     
     # 2. Define file paths
     # Note: Using the path you specified: data/records.json
@@ -68,7 +73,9 @@ def generate_take():
         take_text = response.text.strip()
     except Exception as e:
         print(f"AI Generation failed: {e}")
-        return
+        print(f"Error details: {type(e).__name__}")
+        # Don't return - continue to at least create the file structure
+        take_text = f"[Failed to generate take: {str(e)}]"
 
     # 9. Format the new record
     new_take = {
