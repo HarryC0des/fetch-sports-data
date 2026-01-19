@@ -6,6 +6,7 @@ from datetime import datetime
 
 RSS_URL = "https://sports.yahoo.com/nba/news/rss"
 
+# Data directory
 DATA_DIR = Path("data")
 DATA_DIR.mkdir(exist_ok=True)
 
