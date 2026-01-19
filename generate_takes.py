@@ -1,70 +1,78 @@
 import json
 import os
-import google.generativeai as genai
-
-# 1. Setup Gemini
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-model = genai.GenerativeModel('gemini-1.5-flash')
+from google import genai
 
 def generate_take():
-    # 2. Load the source data
-    with open('data.json', 'r') as f:
-        source_data = json.load(f)
+    # 1. Setup Gemini Client
+    client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
     
-    # 3. Load existing results to prevent duplicates
-    results = []
-    processed_links = set()
-    if os.path.exists('results.json'):
-        with open('results.json', 'r') as f:
-            results = json.load(f)
-            processed_links = {item['link'] for item in results}
+    # 2. Path to your records.json
+    input_file = 'data/records.json'
+    output_file = 'results.json'
 
-    # 4. Find the latest entry not yet processed
-    # Assuming data.json is a list of entries
+    if not os.path.exists(input_file):
+        print(f"Error: Could not find {input_file}")
+        return
+
+    # 3. Load the sports data
+    with open(input_file, 'r') as f:
+        records = json.load(f)
+
+    # 4. Find the latest entry not already in results.json
+    processed_links = set()
+    if os.path.exists(output_file):
+        with open(output_file, 'r') as f:
+            existing_data = json.load(f)
+            processed_links = {item['link'] for item in existing_data}
+
+    # Get the most recent entry (assuming list)
     target_entry = None
-    for entry in reversed(source_data):
+    for entry in reversed(records):
         if entry['link'] not in processed_links:
             target_entry = entry
             break
-    
+
     if not target_entry:
-        print("No new articles to process.")
+        print("No new news to process.")
         return
 
-    # 5. The Grounded Prompt
+    # 5. Generate the Grounded "Sports Take"
     prompt = f"""
-    You are a sharp-witted, professional sports analyst known for "hot takes" that are deeply rooted in facts.
+    Using ONLY the facts below, create a unique, memorable, and distinct sports take.
+    Do not hallucinate or add outside info. Use a sharp, professional tone.
     
-    INPUT DATA:
+    FACTS:
     Title: {target_entry['title']}
-    Description: {target_entry['description']}
-    Article Content: {target_entry['content_html']}
-
-    TASK:
-    Generate a unique, memorable, and distinct sports take based on the provided input.
-
-    STRICT CONSTRAINTS:
-    1. NO HALLUCINATION: Do not invent stats, dates, or player movements not mentioned in the text.
-    2. FACTUAL GROUNDING: Use ONLY facts from the provided input to build the argument.
-    3. TONE: Be bold and opinionated, but remain accurate to the source.
-    4. FORMAT: Return only the text of the take. No intro or outro.
+    Details: {target_entry['description']}
+    Full Context: {target_entry.get('content_html', '')}
     """
 
-    response = model.generate_content(prompt)
+    response = client.models.generate_content(
+        model="gemini-1.5-flash",
+        contents=prompt
+    )
+    
     take_text = response.text.strip()
 
-    # 6. Save back to results
-    new_result = {
-        "guid": target_entry['guid'],
+    # 6. Save to results.json
+    new_take = {
         "link": target_entry['link'],
         "take": take_text,
-        "generated_at": target_entry['ingested_at']
+        "original_title": target_entry['title'],
+        "generated_at": target_entry.get('ingested_at', '2026-01-19')
     }
+
+    results = []
+    if os.path.exists(output_file):
+        with open(output_file, 'r') as f:
+            results = json.load(f)
     
-    results.append(new_result)
-    with open('results.json', 'w') as f:
+    results.append(new_take)
+
+    with open(output_file, 'w') as f:
         json.dump(results, f, indent=4)
-    print(f"Successfully generated take for: {target_entry['title']}")
+    
+    print(f"Success! Take generated for: {target_entry['title']}")
 
 if __name__ == "__main__":
     generate_take()
