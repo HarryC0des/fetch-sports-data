@@ -1,13 +1,10 @@
 import json
 import os
-from google import genai
+import google.generativeai as genai
 
 def generate_take():
-    # 1. Setup Gemini Client with forced v1 API version for stability
-    client = genai.Client(
-        api_key=os.getenv("GOOGLE_API_KEY"),
-        http_options={'api_version': 'v1'}
-    )
+    # 1. Setup Gemini API key
+    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
     
     # 2. Define file paths
     # Note: Using the path you specified: data/records.json
@@ -66,10 +63,8 @@ def generate_take():
 
     # 8. Generate content using the corrected model ID
     try:
-        response = client.models.generate_content(
-            model='gemini-1.5-flash', 
-            contents=prompt
-        )
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        response = model.generate_content(prompt)
         take_text = response.text.strip()
     except Exception as e:
         print(f"AI Generation failed: {e}")
