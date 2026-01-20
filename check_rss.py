@@ -3,8 +3,29 @@ import xml.etree.ElementTree as ET
 import json
 from pathlib import Path
 from datetime import datetime
+from html.parser import HTMLParser
 
 RSS_URL = "https://sports.yahoo.com/nba/news/rss"
+
+# HTML to plain text converter
+class HTMLToPlainText(HTMLParser):
+    def __init__(self):
+        super().__init__()
+        self.text = []
+    
+    def handle_data(self, data):
+        self.text.append(data)
+    
+    def get_text(self):
+        return ''.join(self.text).strip()
+
+def strip_html(html_content):
+    if not html_content:
+        return None
+    parser = HTMLToPlainText()
+    parser.feed(html_content)
+    return parser.get_text()
+
 
 # Data directory
 DATA_DIR = Path("data")
@@ -55,7 +76,7 @@ for item in items:
             "title": item.findtext("title", "").strip(),
             "link": item.findtext("link"),
             "description": item.findtext("description", "").strip(),
-            "content_html": item.findtext("content:encoded", namespaces=NS),
+            "content_html": strip_html(item.findtext("content:encoded", namespaces=NS)),
             "author": item.findtext("dc:creator", namespaces=NS),
             "publisher": item.findtext("dc:publisher", namespaces=NS),
             "source": item.findtext("source"),
