@@ -1,6 +1,36 @@
 import json
 import os
 import google.generativeai as genai
+from datetime import datetime
+
+def get_most_recent_guid_from_records():
+    """Get the guid of the most recent entry in records.json"""
+    records_file = 'data/records.json'
+    if not os.path.exists(records_file):
+        return None
+    
+    with open(records_file, 'r', encoding='utf-8') as f:
+        records = json.load(f)
+    
+    if records:
+        return records[0]['guid']  # Most recent is at index 0
+    return None
+
+def get_most_recent_guid_from_results():
+    """Get the guid of the most recent entry in results.json"""
+    results_file = 'results.json'
+    if not os.path.exists(results_file):
+        return None
+    
+    try:
+        with open(results_file, 'r', encoding='utf-8') as f:
+            results = json.load(f)
+        
+        if results:
+            return results[0]['guid']  # Most recent is at index 0
+        return None
+    except json.JSONDecodeError:
+        return None
 
 def generate_take():
     # 1. Setup Gemini API key
@@ -12,7 +42,6 @@ def generate_take():
     genai.configure(api_key=api_key)
     
     # 2. Define file paths
-    # Note: Using the path you specified: data/records.json
     input_file = 'data/records.json'
     output_file = 'results.json'
 
@@ -25,31 +54,40 @@ def generate_take():
     with open(input_file, 'r', encoding='utf-8') as f:
         records = json.load(f)
 
-    # 5. Deduplication: Load existing results to avoid double-processing
-    processed_links = set()
+    # 5. Get the most recent guids from both files
+    records_guid = get_most_recent_guid_from_records()
+    results_guid = get_most_recent_guid_from_results()
+
+    # 6. Load existing results
+    results = []
     if os.path.exists(output_file):
         try:
             with open(output_file, 'r', encoding='utf-8') as f:
-                existing_data = json.load(f)
-                processed_links = {item['link'] for item in existing_data}
+                results = json.load(f)
         except json.JSONDecodeError:
             print("Warning: results.json was empty or corrupt. Starting fresh.")
 
-    # 6. Find the latest entry not already in results.json
-    target_entry = None
-    # We reverse the list to find the most recent update first
-    for entry in reversed(records):
-        if entry['link'] not in processed_links:
-            target_entry = entry
-            break
-
-    if not target_entry:
-        print("No new news to process. Everything is up to date!")
+    # 7. Check if guids match
+    if records_guid == results_guid:
+        # GUIDs match - create entry with message
+        message_entry = {
+            "guid": records_guid,
+            "link": records[0]['link'] if records else None,
+            "take": "No new article to process. The most recent entry in records.json matches the most recent entry in results.json.",
+            "original_title": records[0]['title'] if records else None,
+            "generated_at": datetime.utcnow().isoformat() + "Z"
+        }
+        
+        results.insert(0, message_entry)
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(results, f, indent=4, ensure_ascii=False)
+        
+        print("Most recent entries match. No new article to process.")
         return
 
-    # 7. Construct the Fact-Based Prompt
-    # We include 'content_html' if available for deeper context
-    context = target_entry.get('content_html', target_entry.get('description', ''))
+    # 8. New entry found - send only content_html to API
+    target_entry = records[0]  # Get the most recent entry
+    content_html = target_entry.get('content_html', '')
     
     prompt = f"""
     You are a professional sports analyst. Generate a unique, memorable, and distinct sports take.
@@ -61,12 +99,10 @@ def generate_take():
     4. Return ONLY the take itself.
 
     FACTS TO USE:
-    Title: {target_entry['title']}
-    Link: {target_entry['link']}
-    Content: {context}
+    {content_html}
     """
 
-    # 8. Generate content using the corrected model ID
+    # 9. Generate content using the corrected model ID
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
         response = model.generate_content(prompt)
@@ -77,28 +113,20 @@ def generate_take():
         # Don't return - continue to at least create the file structure
         take_text = f"[Failed to generate take: {str(e)}]"
 
-    # 9. Format the new record
+    # 10. Format the new record with all current fields from results.json structure
     new_take = {
         "guid": target_entry.get('guid'),
         "link": target_entry['link'],
         "take": take_text,
         "original_title": target_entry['title'],
-        "generated_at": target_entry.get('ingested_at')
+        "generated_at": datetime.utcnow().isoformat() + "Z"
     }
 
-    # 10. Append and Save
-    results = []
-    if os.path.exists(output_file):
-        with open(output_file, 'r', encoding='utf-8') as f:
-            try:
-                results = json.load(f)
-            except:
-                pass
-    
-    results.append(new_take)
+    # 11. Insert at the top and Save
+    results.insert(0, new_take)
 
     with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(results, f, indent=4)
+        json.dump(results, f, indent=4, ensure_ascii=False)
     
     print(f"Successfully created a take for: {target_entry['title']}")
 
