@@ -24,11 +24,18 @@ jobs:
           python check_rss.py
           echo "[DEBUG] RSS feed fetch completed"
         
-      - name: Run AI script
+      - name: Run AI script with OpenRouter API
+        env:
+          OPEN_ROUTER_KEY: ${{ secrets.OPEN_ROUTER_KEY }}
         run: |
-          echo "[DEBUG] Starting AI script with free LLM API endpoint"
-          echo "[DEBUG] API endpoint: https://apifreellm.com/api/chat"
-          echo "[DEBUG] No API key required"
+          echo "[DEBUG] Starting AI script with OpenRouter API endpoint"
+          echo "[DEBUG] API endpoint: https://openrouter.ai/api/v1/chat/completions"
+          echo "[DEBUG] Model: openai/gpt-4-turbo"
+          if [ -z "$OPEN_ROUTER_KEY" ]; then
+            echo "[ERROR] OPEN_ROUTER_KEY secret not configured!"
+            exit 1
+          fi
+          echo "[DEBUG] OPEN_ROUTER_KEY found in secrets"
           python generate_takes.py
           echo "[DEBUG] AI script completed"
         

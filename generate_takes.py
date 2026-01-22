@@ -33,10 +33,15 @@ def get_most_recent_guid_from_results():
         return None
 
 def generate_take():
-    # 1. Setup API endpoint
-    api_url = "https://apifreellm.com/api/chat"
+    # 1. Setup OpenRouter API configuration
+    api_url = "https://openrouter.ai/api/v1/chat/completions"
+    api_key = os.getenv("OPEN_ROUTER_KEY")
     print(f"[DEBUG] Using API endpoint: {api_url}")
-    print("[DEBUG] No API key required for this endpoint")
+    
+    if not api_key:
+        print("ERROR: OPEN_ROUTER_KEY environment variable is not set!")
+        return
+    print("[DEBUG] OPEN_ROUTER_KEY found in environment")
     
     # 2. Define file paths
     input_file = 'data/records.json'
@@ -108,30 +113,45 @@ STRICT RULES:
 FACTS TO USE:
 {content_html}"""
 
-    # 9. Generate content using the free LLM API
-    print(f"[DEBUG] Sending request to API: {api_url}")
+    # 9. Generate content using the OpenRouter API
+    print(f"[DEBUG] Sending request to OpenRouter API")
     try:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "HTTP-Referer": "https://github.com/HarryC0des/fetch-sports-data",
+            "X-Title": "Sports Takes Generator"
+        }
+        print(f"[DEBUG] Request headers prepared (Authorization: Bearer [REDACTED])")
+        
         payload = {
+            "model": "openai/gpt-4-turbo",
             "messages": [
                 {"role": "user", "content": prompt}
             ]
         }
-        print(f"[DEBUG] Request payload prepared (prompt length: {len(prompt)} chars)")
+        print(f"[DEBUG] Request payload prepared (model: openai/gpt-4-turbo, prompt length: {len(prompt)} chars)")
         
-        response = requests.post(api_url, json=payload, timeout=30)
+        response = requests.post(api_url, headers=headers, json=payload, timeout=60)
         print(f"[DEBUG] API response status code: {response.status_code}")
         
         if response.status_code != 200:
-            print(f"[ERROR] API returned status code {response.status_code}")
-            print(f"[DEBUG] Response content: {response.text}")
-            take_text = f"[Failed to generate take: API returned status {response.status_code}]"
+            print(f"[ERROR] OpenRouter API returned status code {response.status_code}")
+            print(f"[DEBUG] Response content: {response.text[:500]}")
+            take_text = f"[Failed to generate take: OpenRouter API returned status {response.status_code}]"
         else:
             response_json = response.json()
             print(f"[DEBUG] API response received, parsing...")
             print(f"[DEBUG] Response keys: {list(response_json.keys())}")
             
-            # Try to extract the message from common response formats
-            take_text = response_json.get('result', response_json.get('message', response_json.get('content', ''))).strip()
+            # Extract message from OpenRouter response format (choices -> content)
+            try:
+                if 'choices' in response_json and len(response_json['choices']) > 0:
+                    take_text = response_json['choices'][0].get('message', {}).get('content', '').strip()
+                else:
+                    take_text = ""
+            except (KeyError, IndexError, TypeError) as e:
+                print(f"[DEBUG] Error extracting content from choices: {e}")
+                take_text = ""
             
             if not take_text:
                 print(f"[WARNING] API response was empty or missing expected fields")
@@ -140,23 +160,25 @@ FACTS TO USE:
             else:
                 print(f"[DEBUG] Successfully generated take ({len(take_text)} chars)")
     except requests.exceptions.Timeout:
-        print(f"[ERROR] API request timed out (30 second timeout)")
+        print(f"[ERROR] OpenRouter API request timed out (60 second timeout)")
         take_text = "[Failed to generate take: API request timeout]"
     except requests.exceptions.RequestException as e:
-        print(f"[ERROR] Network error during API call: {e}")
+        print(f"[ERROR] Network error during OpenRouter API call: {e}")
         print(f"[DEBUG] Exception type: {type(e).__name__}")
-        take_text = f"[Failed to generate take: {str(e)}]"
+        print(f"[DEBUG] Full error: {str(e)}")
+        take_text = f"[Failed to generate take: Network error]"
     except json.JSONDecodeError as e:
-        print(f"[ERROR] Failed to parse API response JSON: {e}")
+        print(f"[ERROR] Failed to parse OpenRouter API response JSON: {e}")
         try:
             print(f"[DEBUG] Raw response: {response.text[:500]}")
         except:
             print(f"[DEBUG] Could not read response text")
         take_text = "[Failed to generate take: invalid API response format]"
     except Exception as e:
-        print(f"[ERROR] Unexpected error during API call: {e}")
+        print(f"[ERROR] Unexpected error during OpenRouter API call: {e}")
         print(f"[DEBUG] Error type: {type(e).__name__}")
-        take_text = f"[Failed to generate take: {str(e)}]"
+        print(f"[DEBUG] Full error details: {str(e)}")
+        take_text = f"[Failed to generate take: Unexpected error]"
 
     # 10. Format the new record with all current fields from results.json structure
     new_take = {
