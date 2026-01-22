@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sports News Word Analysis</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .analyze-btn {
+            padding: 12px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #667eea;
+            background: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .analyze-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .analyze-btn:active {
+            transform: translateY(0);
+        }
+        
+        .analyze-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2em;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #ff6b6b;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        .results {
+            display: none;
+        }
+        
+        .results.show {
+            display: block;
+        }
+        
+        .date-section {
+            background: white;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .date-section:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        
+        .date-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+        
+        .date-stats {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            gap: 20px;
+            font-size: 0.95em;
+        }
+        
+        .stat {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .stat-label {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .stat-value {
+            color: #667eea;
+            font-weight: 700;
+        }
+        
+        .word-list {
+            padding: 20px;
+        }
+        
+        .word-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            margin-bottom: 8px;
+            background: #f8f9fa;
+            border-radius: 5px;
+            transition: background 0.2s ease;
+        }
+        
+        .word-item:hover {
+            background: #e9ecef;
+        }
+        
+        .word-rank {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 80px;
+        }
+        
+        .rank-number {
+            font-weight: 700;
+            color: #667eea;
+            font-size: 1.1em;
+            min-width: 30px;
+        }
+        
+        .word-name {
+            font-weight: 600;
+            color: #333;
+            flex-grow: 1;
+            text-transform: capitalize;
+        }
+        
+        .word-count {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 0.9em;
+            min-width: 45px;
+            text-align: center;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Sports News Word Analysis</h1>
+            <p>Click the button below to analyze the most frequently used words from today's sports news</p>
+        </div>
+        
+        <div class="controls">
+            <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()">
+                🔍 Analyze Words by Date
+            </button>
+        </div>
+        
+        <div class="error" id="errorMsg"></div>
+        
+        <div class="loading" id="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Analyzing descriptions...</p>
+        </div>
+        
+        <div class="results" id="results"></div>
+    </div>
+    
+    <script>
+        async function runAnalysis() {
+            const btn = document.getElementById('analyzeBtn');
+            const loading = document.getElementById('loading');
+            const results = document.getElementById('results');
+            const errorMsg = document.getElementById('errorMsg');
+            
+            // Reset states
+            errorMsg.classList.remove('show');
+            results.classList.remove('show');
+            loading.style.display = 'none';
+            
+            // Disable button and show loading
+            btn.disabled = true;
+            loading.style.display = 'block';
+            
+            try {
+                const response = await fetch('/api/analyze');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Analysis failed');
+                }
+                
+                displayResults(data.data);
+            } catch (error) {
+                showError('Error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        }
+        
+        function displayResults(data) {
+            const resultsContainer = document.getElementById('results');
+            
+            if (Object.keys(data).length === 0) {
+                resultsContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No data found</p></div>';
+                resultsContainer.classList.add('show');
+                return;
+            }
+            
+            let html = '';
+            
+            for (const [date, analysis] of Object.entries(data)) {
+                html += `
+                    <div class="date-section">
+                        <div class="date-header">📅 ${formatDate(date)}</div>
+                        <div class="date-stats">
+                            <div class="stat">
+                                <span class="stat-label">Total Words:</span>
+                                <span class="stat-value">${analysis.total_words}</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-label">Unique Words:</span>
+                                <span class="stat-value">${analysis.unique_words}</span>
+                            </div>
+                        </div>
+                        <div class="word-list">
+                `;
+                
+                if (analysis.top_10.length === 0) {
+                    html += '<div class="empty-state"><p>No words to display</p></div>';
+                } else {
+                    analysis.top_10.forEach((item, index) => {
+                        html += `
+                            <div class="word-item">
+                                <div class="word-rank">
+                                    <span class="rank-number">#${index + 1}</span>
+                                    <span class="word-name">${item.word}</span>
+                                </div>
+                                <span class="word-count">${item.count}x</span>
+                            </div>
+                        `;
+                    });
+                }
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            }
+            
+            resultsContainer.innerHTML = html;
+            resultsContainer.classList.add('show');
+        }
+        
+        function showError(message) {
+            const errorMsg = document.getElementById('errorMsg');
+            errorMsg.textContent = message;
+            errorMsg.classList.add('show');
+        }
+        
+        function formatDate(dateStr) {
+            const [year, month, day] = dateStr.split('-');
+            const date = new Date(year, month - 1, day);
+            return date.toLocaleDateString('en-US', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+            });
+        }
+    </script>
+</body>
+</html>
