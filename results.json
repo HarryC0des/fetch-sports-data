@@ -2,6 +2,13 @@
     {
         "guid": "7aebb458-e608-45b7-bc1c-b161f81d4fe7",
         "link": "https://sports.yahoo.com/nba/article/jeanie-buss-reportedly-felt-lebron-james-wasnt-grateful-enough-after-lakers-took-son-bronny-in-nba-draft-170021056.html",
+        "take": "No new article to process. The most recent entry in records.json matches the most recent entry in results.json.",
+        "original_title": "Jeanie Buss reportedly felt LeBron James wasn&#39;t grateful enough after Lakers took son Bronny in NBA Draft",
+        "generated_at": "2026-01-22T01:43:57.708891Z"
+    },
+    {
+        "guid": "7aebb458-e608-45b7-bc1c-b161f81d4fe7",
+        "link": "https://sports.yahoo.com/nba/article/jeanie-buss-reportedly-felt-lebron-james-wasnt-grateful-enough-after-lakers-took-son-bronny-in-nba-draft-170021056.html",
         "take": "[Failed to generate take: API returned status 403]",
         "original_title": "Jeanie Buss reportedly felt LeBron James wasn&#39;t grateful enough after Lakers took son Bronny in NBA Draft",
         "generated_at": "2026-01-22T01:27:34.510441Z"
