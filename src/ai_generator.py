@@ -10,7 +10,7 @@ from src.utils import load_records, load_results, save_results
 
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
-MODEL = "openai/gpt-4-turbo"
+MODEL = "tngtech/tng-r1t-chimera:free"
 
 
 def get_most_recent_guid(records):
