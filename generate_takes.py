@@ -1,6 +1,6 @@
 import json
 import os
-import google.generativeai as genai
+import requests
 from datetime import datetime
 
 def get_most_recent_guid_from_records():
@@ -33,30 +33,33 @@ def get_most_recent_guid_from_results():
         return None
 
 def generate_take():
-    # 1. Setup Gemini API key
-    api_key = os.getenv("GOOGLE_API_KEY")
-    if not api_key:
-        print("ERROR: GOOGLE_API_KEY environment variable is not set!")
-        return
-    
-    genai.configure(api_key=api_key)
+    # 1. Setup API endpoint
+    api_url = "https://apifreellm.com/api/chat"
+    print(f"[DEBUG] Using API endpoint: {api_url}")
+    print("[DEBUG] No API key required for this endpoint")
     
     # 2. Define file paths
     input_file = 'data/records.json'
     output_file = 'results.json'
 
     # 3. Safety Check: Does the source file exist?
+    print(f"[DEBUG] Checking for input file: {input_file}")
     if not os.path.exists(input_file):
-        print(f"Error: Could not find {input_file}. Check your folder structure.")
+        print(f"[ERROR] Could not find {input_file}. Check your folder structure.")
         return
+    print(f"[DEBUG] Input file found: {input_file}")
 
     # 4. Load the sports data
+    print(f"[DEBUG] Loading records from {input_file}")
     with open(input_file, 'r', encoding='utf-8') as f:
         records = json.load(f)
+    print(f"[DEBUG] Loaded {len(records)} records")
 
     # 5. Get the most recent guids from both files
     records_guid = get_most_recent_guid_from_records()
     results_guid = get_most_recent_guid_from_results()
+    print(f"[DEBUG] Records GUID: {records_guid}")
+    print(f"[DEBUG] Results GUID: {results_guid}")
 
     # 6. Load existing results
     results = []
@@ -64,8 +67,11 @@ def generate_take():
         try:
             with open(output_file, 'r', encoding='utf-8') as f:
                 results = json.load(f)
+            print(f"[DEBUG] Loaded existing results.json with {len(results)} entries")
         except json.JSONDecodeError:
-            print("Warning: results.json was empty or corrupt. Starting fresh.")
+            print("[WARNING] results.json was empty or corrupt. Starting fresh.")
+    else:
+        print(f"[DEBUG] No existing results.json found, starting fresh")
 
     # 7. Check if guids match
     if records_guid == results_guid:
@@ -82,35 +88,74 @@ def generate_take():
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(results, f, indent=4, ensure_ascii=False)
         
-        print("Most recent entries match. No new article to process.")
+        print("[DEBUG] Most recent entries match. No new article to process.")
         return
 
     # 8. New entry found - send only content_html to API
     target_entry = records[0]  # Get the most recent entry
     content_html = target_entry.get('content_html', '')
+    print(f"[DEBUG] Processing new article: {target_entry.get('title')}")
+    print(f"[DEBUG] Content length: {len(content_html)} characters")
     
-    prompt = f"""
-    You are a professional sports analyst. Generate a unique, memorable, and distinct sports take.
-    
-    STRICT RULES:
-    1. Use ONLY the facts provided below.
-    2. Do NOT hallucinate stats, teams, or details not in the text.
-    3. Be bold and sharp, but 100% factually grounded.
-    4. Return ONLY the take itself.
+    prompt = f"""You are a professional sports analyst. Generate a unique, memorable, and distinct sports take.
 
-    FACTS TO USE:
-    {content_html}
-    """
+STRICT RULES:
+1. Use ONLY the facts provided below.
+2. Do NOT hallucinate stats, teams, or details not in the text.
+3. Be bold and sharp, but 100% factually grounded.
+4. Return ONLY the take itself.
 
-    # 9. Generate content using the corrected model ID
+FACTS TO USE:
+{content_html}"""
+
+    # 9. Generate content using the free LLM API
+    print(f"[DEBUG] Sending request to API: {api_url}")
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
-        response = model.generate_content(prompt)
-        take_text = response.text.strip()
+        payload = {
+            "messages": [
+                {"role": "user", "content": prompt}
+            ]
+        }
+        print(f"[DEBUG] Request payload prepared (prompt length: {len(prompt)} chars)")
+        
+        response = requests.post(api_url, json=payload, timeout=30)
+        print(f"[DEBUG] API response status code: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"[ERROR] API returned status code {response.status_code}")
+            print(f"[DEBUG] Response content: {response.text}")
+            take_text = f"[Failed to generate take: API returned status {response.status_code}]"
+        else:
+            response_json = response.json()
+            print(f"[DEBUG] API response received, parsing...")
+            print(f"[DEBUG] Response keys: {list(response_json.keys())}")
+            
+            # Try to extract the message from common response formats
+            take_text = response_json.get('result', response_json.get('message', response_json.get('content', ''))).strip()
+            
+            if not take_text:
+                print(f"[WARNING] API response was empty or missing expected fields")
+                print(f"[DEBUG] Full response: {response_json}")
+                take_text = "[Failed to generate take: empty response from API]"
+            else:
+                print(f"[DEBUG] Successfully generated take ({len(take_text)} chars)")
+    except requests.exceptions.Timeout:
+        print(f"[ERROR] API request timed out (30 second timeout)")
+        take_text = "[Failed to generate take: API request timeout]"
+    except requests.exceptions.RequestException as e:
+        print(f"[ERROR] Network error during API call: {e}")
+        print(f"[DEBUG] Exception type: {type(e).__name__}")
+        take_text = f"[Failed to generate take: {str(e)}]"
+    except json.JSONDecodeError as e:
+        print(f"[ERROR] Failed to parse API response JSON: {e}")
+        try:
+            print(f"[DEBUG] Raw response: {response.text[:500]}")
+        except:
+            print(f"[DEBUG] Could not read response text")
+        take_text = "[Failed to generate take: invalid API response format]"
     except Exception as e:
-        print(f"AI Generation failed: {e}")
-        print(f"Error details: {type(e).__name__}")
-        # Don't return - continue to at least create the file structure
+        print(f"[ERROR] Unexpected error during API call: {e}")
+        print(f"[DEBUG] Error type: {type(e).__name__}")
         take_text = f"[Failed to generate take: {str(e)}]"
 
     # 10. Format the new record with all current fields from results.json structure
@@ -124,11 +169,13 @@ def generate_take():
 
     # 11. Insert at the top and Save
     results.insert(0, new_take)
+    print(f"[DEBUG] Created new result entry with GUID: {target_entry.get('guid')}")
 
+    print(f"[DEBUG] Saving {len(results)} total results to {output_file}")
     with open(output_file, 'w', encoding='utf-8') as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
     
-    print(f"Successfully created a take for: {target_entry['title']}")
+    print(f"[SUCCESS] Successfully created a take for: {target_entry['title']}")
 
 if __name__ == "__main__":
     generate_take()
