@@ -1,5 +1,12 @@
 [
     {
+        "guid": "02b7bb97-49f9-4d2e-aaf2-960f8fbbb3b0",
+        "link": "https://sports.yahoo.com/nba/article/lakers-center-deandre-ayton-shows-off-new-look-after-leaving-game-due-to-eye-poke-he-looks-like-a-pirate-143539153.html",
+        "take": "[Failed to generate take: OpenRouter API returned status 402]",
+        "original_title": "Lakers center DeAndre Ayton shows off new look after leaving game due to eye poke: &#39;He looks like a pirate&#39;",
+        "generated_at": "2026-01-22T01:53:19.610744Z"
+    },
+    {
         "guid": "7aebb458-e608-45b7-bc1c-b161f81d4fe7",
         "link": "https://sports.yahoo.com/nba/article/jeanie-buss-reportedly-felt-lebron-james-wasnt-grateful-enough-after-lakers-took-son-bronny-in-nba-draft-170021056.html",
         "take": "No new article to process. The most recent entry in records.json matches the most recent entry in results.json.",
