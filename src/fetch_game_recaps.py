@@ -23,7 +23,10 @@ def fetch_recap_text(game_id, debug=True):
 
     soup = BeautifulSoup(response.text, "html.parser")
 
-    recap_div = soup.select_one("div.Story__Body.t__body")
+    recap_div = (
+    soup.select_one("div.Story__Body.t__body") or
+    soup.select_one("div[class*='Story__Body']")
+    )
 
     if not recap_div:
         print(f"[WARNING] No recap body found for gameId={game_id}")
