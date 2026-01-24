@@ -50,6 +50,12 @@ def fetch_recap_text(game_id, debug=True):
 
 
 def main():
+    print("[DEBUG] CWD:", os.getcwd())
+    print("[DEBUG] data exists:", os.path.exists("data"))
+    print("[DEBUG] data writable:", os.access("data", os.W_OK))
+    print("[DEBUG] recap exists:", os.path.exists(OUTPUT_PATH))
+    print("[DEBUG] recap writable:", os.access(OUTPUT_PATH, os.W_OK))
+
     os.makedirs("data", exist_ok=True)
 
     game_ids = load_game_ids()
@@ -68,6 +74,10 @@ def main():
 
         # Be polite to ESPN
         time.sleep(1)
+
+    # Remove existing file to avoid permission issues
+    if os.path.exists(OUTPUT_PATH):
+        os.remove(OUTPUT_PATH)
 
     with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(recaps, f, indent=2)
