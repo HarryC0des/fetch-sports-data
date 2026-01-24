@@ -2,7 +2,7 @@ import requests
 import json
 import os
 
-URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
+URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=20260122"
 OUTPUT_FILE = "data/game_log.json"
 
 
