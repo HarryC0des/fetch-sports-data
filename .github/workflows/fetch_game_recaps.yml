@@ -1,0 +1,37 @@
+name: Fetch NBA Game Recaps
+
+on:
+  workflow_dispatch:
+  # Optional: run after another workflow completes successfully
+  # workflow_run:
+  #   workflows: ["Fetch NBA Game IDs"]
+  #   types:
+  #     - completed
+
+jobs:
+  fetch-recaps:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install requests beautifulsoup4
+
+      - name: Run recap scraper
+        run: |
+          python src/fetch_game_recaps.py
+
+      # Optional but recommended: persist output
+      - name: Upload recap JSON as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-recaps
+          path: /tmp/game_recap.json
