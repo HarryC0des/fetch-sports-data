@@ -1,3 +1,24 @@
+import json
+import os
+import time
+import requests
+from bs4 import BeautifulSoup
+
+GAME_LOG_PATH = "data/game_log.json"
+OUTPUT_PATH = "/tmp/game_recap.json"
+BASE_URL = "https://www.espn.com/nba/recap/_/gameId/"
+
+
+def load_game_ids():
+    if not os.path.exists(GAME_LOG_PATH):
+        raise FileNotFoundError(f"{GAME_LOG_PATH} not found")
+
+    with open(GAME_LOG_PATH, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    return data.get("gameIds", [])
+
+
 def fetch_recap_text(game_id, debug=True):
     url = f"{BASE_URL}{game_id}"
 
@@ -23,10 +44,7 @@ def fetch_recap_text(game_id, debug=True):
 
     soup = BeautifulSoup(response.text, "html.parser")
 
-    recap_div = (
-    soup.select_one("div.Story__Body.t__body") or
-    soup.select_one("div[class*='Story__Body']")
-    )
+    recap_div = soup.select_one("div.Story__Body.t__body")
 
     if not recap_div:
         print(f"[WARNING] No recap body found for gameId={game_id}")
@@ -44,3 +62,39 @@ def fetch_recap_text(game_id, debug=True):
         print(f"[DEBUG] Extracted {len(text_blocks)} paragraphs for gameId={game_id}")
 
     return text_blocks
+
+
+def main():
+    print("[DEBUG] CWD:", os.getcwd())
+    print("[DEBUG] Writing output to:", OUTPUT_PATH)
+
+    game_ids = load_game_ids()
+    print(f"[DEBUG] Loaded {len(game_ids)} game IDs")
+
+    recaps = []
+
+    for game_id in game_ids:
+        recap_text = fetch_recap_text(game_id)
+
+        if recap_text:
+            recaps.append({
+                "gameID": game_id,
+                "recapText": recap_text
+            })
+
+        # Be polite to ESPN
+        time.sleep(1)
+
+    # ALWAYS write the output file, even if empty
+    try:
+        with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
+            json.dump(recaps, f, indent=2)
+    except Exception as e:
+        print("[FATAL] Failed to write output file:", e)
+        raise
+
+    print(f"[DEBUG] Saved {len(recaps)} recaps to {OUTPUT_PATH}")
+
+
+if __name__ == "__main__":
+    main()

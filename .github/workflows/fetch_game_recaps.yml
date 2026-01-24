@@ -2,11 +2,6 @@ name: Fetch NBA Game Recaps
 
 on:
   workflow_dispatch:
-  # Optional: run after another workflow completes successfully
-  # workflow_run:
-  #   workflows: ["Fetch NBA Game IDs"]
-  #   types:
-  #     - completed
 
 jobs:
   fetch-recaps:
@@ -29,8 +24,15 @@ jobs:
         run: |
           python src/fetch_game_recaps.py
 
-      # Optional but recommended: persist output
+      - name: Verify recap file exists
+        run: |
+          echo "Listing /tmp contents:"
+          ls -lah /tmp
+          echo "Checking file explicitly:"
+          test -f /tmp/game_recap.json && echo "FOUND game_recap.json" || echo "MISSING game_recap.json"
+
       - name: Upload recap JSON as artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: game-recaps
