@@ -1,7 +1,10 @@
 import requests
 import json
+import os
 
 URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
+OUTPUT_FILE = "data/game_log.json"
+
 
 def fetch_game_ids(debug=True):
     if debug:
@@ -34,7 +37,6 @@ def fetch_game_ids(debug=True):
 
     # Step 4: Extract events
     events = data.get("events")
-
     if events is None:
         print("[ERROR] 'events' key not found in response")
         return []
@@ -50,7 +52,6 @@ def fetch_game_ids(debug=True):
             print(f"[DEBUG] Processing event #{index}")
 
         game_id = event.get("id")
-
         if game_id:
             if debug:
                 print(f"[DEBUG] Found game ID: {game_id}")
@@ -64,8 +65,26 @@ def fetch_game_ids(debug=True):
     return game_ids
 
 
+def save_game_ids(game_ids, debug=True):
+    # Ensure data directory exists
+    os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+
+    payload = {
+        "gameIds": game_ids
+    }
+
+    try:
+        with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+        if debug:
+            print(f"[DEBUG] Game IDs written to {OUTPUT_FILE}")
+    except IOError as e:
+        print(f"[ERROR] Failed to write file: {e}")
+
+
 if __name__ == "__main__":
     print("[DEBUG] Script started")
     ids = fetch_game_ids(debug=True)
+    save_game_ids(ids, debug=True)
     print("[DEBUG] Script finished")
-    print("Game IDs:", ids)
+
