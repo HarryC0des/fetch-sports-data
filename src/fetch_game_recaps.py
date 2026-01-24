@@ -5,7 +5,7 @@ import requests
 from bs4 import BeautifulSoup
 
 GAME_LOG_PATH = "data/game_log.json"
-OUTPUT_PATH = "data/game_recap.json"
+OUTPUT_PATH = "/tmp/game_recap.json"
 BASE_URL = "https://www.espn.com/nba/recap/_/gameId/"
 
 
@@ -34,7 +34,7 @@ def fetch_recap_text(game_id, debug=True):
 
     soup = BeautifulSoup(response.text, "html.parser")
 
-    recap_div = soup.find("div", class_="Story__Body t__body")
+    recap_div = soup.select_one("div.Story__Body.t__body")
 
     if not recap_div:
         print(f"[WARNING] No recap body found for gameId={game_id}")
