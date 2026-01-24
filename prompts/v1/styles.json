@@ -1,0 +1,7 @@
+{
+  "factual": "Neutral tone. Objective language. No opinions.",
+  "hot_takes": "Strong opinions. Confident tone. Still fact-grounded.",
+  "analytical": "Explain causes and implications. Reference trends and context.",
+  "nuanced": "Balanced perspectives. Acknowledge uncertainty.",
+  "mix": "Blend of factual, analytical, and nuanced with light opinion."
+}

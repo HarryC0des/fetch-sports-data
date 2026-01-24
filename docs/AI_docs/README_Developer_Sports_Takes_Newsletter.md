@@ -48,21 +48,28 @@ scrapers → artifacts → fact extraction → LLM → takes → email delivery
 ```
 .
 ├── src/
-│   ├── fetch_game_ids.py
-│   ├── fetch_game_recaps.py
-│   ├── extract_facts.py        # (planned)
-│   ├── generate_takes.py       # (planned)
-│   └── send_emails.py          # (planned)
+│   ├── ingest/
+│   │   ├── fetch_game_ids.py
+│   │   └── fetch_game_recaps.py
+│   ├── process/
+│   │   ├── extract_facts.py
+│   │   ├── generate_takes.py
+│   │   └── personalize.py
+│   └── delivery/
+│       └── send_emails.py
 │
-├── data/
-│   └── game_log.json           # Game IDs only
+├── prompts/
+│   ├── versions.json
+│   └── v1/
+│       ├── base_system.txt
+│       ├── output_rules.txt
+│       └── styles.json
 │
 ├── .github/
 │   └── workflows/
-│       ├── fetch-game-ids.yml
-│       ├── fetch-game-recaps.yml
-│       ├── generate-takes.yml  # (planned)
-│       └── send-emails.yml     # (planned)
+│       ├── ingest.yml
+│       ├── generate.yml
+│       └── send_emails.yml
 │
 └── README.md
 ```
@@ -73,29 +80,30 @@ scrapers → artifacts → fact extraction → LLM → takes → email delivery
 
 ### 1. Fetch Game IDs
 - Hits ESPN scoreboard API
-- Stores game IDs in `data/game_log.json`
-- Commits file to repo
+- Saves game IDs as a **GitHub Actions artifact**
+- Output path: `/tmp/game_ids.json`
 
 ### 2. Fetch Game Recaps
 - Scrapes ESPN recap pages
 - Extracts recap text
 - Saves output as a **GitHub Actions artifact**
-- Output path: `/tmp/game_recap.json`
+- Output path: `/tmp/recaps.json`
 
-### 3. Fact Extraction (Planned)
+### 3. Fact Extraction
 - Reads recap artifact
 - Extracts structured facts
 - Outputs new artifact
 
-### 4. LLM Take Generation (Planned)
+### 4. LLM Take Generation
 - Reads facts artifact
 - Generates takes based on prompt templates
-- Stores takes in database or artifact
+- Outputs takes artifact
 
-### 5. Email Delivery (Planned)
+### 5. Personalization + Email Delivery
 - Matches takes to users
 - Renders email templates
 - Sends via SendGrid
+ - Outputs delivery artifact for audit
 
 ---
 
@@ -122,7 +130,7 @@ LLM calls are made **per game**, not per batch, to control token usage.
 Artifacts are used to pass data between workflows **without committing to git**.
 
 Example:
-- `game_recap.json` is generated, uploaded, consumed, and discarded.
+- `recaps.json` is generated, uploaded, consumed, and discarded.
 
 Benefits:
 - Clean repo
@@ -147,7 +155,12 @@ Unsubscribe handled via footer link.
 Stored via GitHub Secrets:
 
 - `SENDGRID_API_KEY`
-- `LLM_API_KEY` (provider-specific)
+- `OPEN_ROUTER_KEY`
+- `SUPABASE_KEY`
+
+Other required config:
+- `SUPABASE_URL`
+- `SENDGRID_FROM_EMAIL`
 
 Never commit secrets to the repo.
 
@@ -177,22 +190,23 @@ Never commit secrets to the repo.
 
 ### Install dependencies
 ```bash
-pip install requests beautifulsoup4
+pip install -r requirements.txt
 ```
 
-### Run scraper locally
+### Run ingestion locally
 ```bash
-python src/fetch_game_recaps.py
+python -m src.ingest.fetch_game_ids
+python -m src.ingest.fetch_game_recaps
 ```
 
 ---
 
 ## 🗺️ Roadmap
 
-- [ ] Fact extraction module
-- [ ] LLM take generation
-- [ ] User database integration
-- [ ] Email scheduling
+- [x] Fact extraction module
+- [x] LLM take generation
+- [x] User database integration
+- [x] Email scheduling
 - [ ] Multi-league support
 - [ ] Designed newsletter templates
 

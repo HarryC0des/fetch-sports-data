@@ -1,0 +1,56 @@
+name: Send NBA Emails
+
+on:
+  workflow_run:
+    workflows: ["Generate NBA Takes"]
+    types: [completed]
+
+jobs:
+  send:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    env:
+      RUN_ID: ${{ github.run_id }}
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download takes artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: takes
+          run-id: ${{ github.event.workflow_run.id }}
+          path: /tmp
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Personalize takes
+        env:
+          TAKES_PATH: /tmp/takes.json
+          SUPABASE_URL: https://hzncchogxeyexnwgurkk.supabase.co
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python -m src.process.personalize
+
+      - name: Send emails
+        env:
+          DELIVERIES_PATH: /tmp/deliveries.json
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          SENDGRID_FROM_EMAIL: ${{ secrets.SENDGRID_FROM_EMAIL }}
+          SENDGRID_FROM_NAME: Sports Takes
+        run: python -m src.delivery.send_emails
+
+      - name: Upload deliveries artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deliveries
+          path: /tmp/deliveries.json

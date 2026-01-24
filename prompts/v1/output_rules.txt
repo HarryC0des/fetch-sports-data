@@ -1,0 +1,7 @@
+Output requirements:
+- Plain text only
+- No markdown
+- No emojis
+- No hyperlinks
+- No hashtags
+- If facts are insufficient, respond with: INSUFFICIENT FACTS TO GENERATE TAKE

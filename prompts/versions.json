@@ -1,0 +1,9 @@
+{
+  "active_version": "v1",
+  "versions": {
+    "v1": {
+      "created": "2026-01-24",
+      "description": "Initial v1 prompt set for NBA takes."
+    }
+  }
+}
