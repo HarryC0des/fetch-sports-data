@@ -136,71 +136,130 @@ def encode_table_name(table_name):
     return quote(quoted, safe="")
 
 
+def build_table_paths(table_name):
+    raw = quote(table_name, safe="")
+    quoted = encode_table_name(table_name)
+    if quoted == raw:
+        return [raw]
+    return [quoted, raw]
+
+
+def is_missing_table(response):
+    if response.status_code != 404:
+        return False
+    try:
+        payload = response.json()
+    except ValueError:
+        return False
+    return payload.get("code") == "PGRST205"
+
+
 def fetch_user_by_email(base_url, api_key, schema, table, email):
-    table_path = encode_table_name(table)
-    url = f"{base_url}/rest/v1/{table_path}?select=id,email&email=eq.{email}"
-    response = requests.get(
-        url,
-        headers=supabase_headers(api_key, schema=schema, include_json=False),
-        timeout=20,
-    )
-    if response.status_code != 200:
+    last_response = None
+    for table_path in build_table_paths(table):
+        url = f"{base_url}/rest/v1/{table_path}?select=id,email&email=eq.{email}"
+        response = requests.get(
+            url,
+            headers=supabase_headers(api_key, schema=schema, include_json=False),
+            timeout=20,
+        )
+        last_response = response
+        if response.status_code == 200:
+            data = response.json()
+            return data[0] if data else None
+        if is_missing_table(response):
+            continue
         raise RuntimeError(
             f"Supabase user lookup failed: {response.status_code} {response.text}"
         )
-    data = response.json()
-    return data[0] if data else None
+
+    raise RuntimeError(
+        f"Supabase user lookup failed: {last_response.status_code} {last_response.text}"
+    )
 
 
 def create_user(base_url, api_key, schema, table, payload):
-    table_path = encode_table_name(table)
-    url = f"{base_url}/rest/v1/{table_path}"
-    response = requests.post(
-        url, headers=supabase_headers(api_key, schema=schema), json=payload, timeout=20
-    )
-    if response.status_code not in (200, 201):
+    last_response = None
+    for table_path in build_table_paths(table):
+        url = f"{base_url}/rest/v1/{table_path}"
+        response = requests.post(
+            url,
+            headers=supabase_headers(api_key, schema=schema),
+            json=payload,
+            timeout=20,
+        )
+        last_response = response
+        if response.status_code in (200, 201):
+            data = response.json()
+            if not data:
+                raise RuntimeError("Supabase user create did not return data.")
+            return data[0]["id"]
+        if is_missing_table(response):
+            continue
         raise RuntimeError(
             f"Supabase user create failed: {response.status_code} {response.text}"
         )
-    data = response.json()
-    if not data:
-        raise RuntimeError("Supabase user create did not return data.")
-    return data[0]["id"]
+
+    raise RuntimeError(
+        f"Supabase user create failed: {last_response.status_code} {last_response.text}"
+    )
 
 
 def update_user(base_url, api_key, schema, table, user_id, payload):
-    table_path = encode_table_name(table)
-    url = f"{base_url}/rest/v1/{table_path}?id=eq.{user_id}"
-    response = requests.patch(
-        url, headers=supabase_headers(api_key, schema=schema), json=payload, timeout=20
-    )
-    if response.status_code not in (200, 204):
+    last_response = None
+    for table_path in build_table_paths(table):
+        url = f"{base_url}/rest/v1/{table_path}?id=eq.{user_id}"
+        response = requests.patch(
+            url,
+            headers=supabase_headers(api_key, schema=schema),
+            json=payload,
+            timeout=20,
+        )
+        last_response = response
+        if response.status_code in (200, 204):
+            return
+        if is_missing_table(response):
+            continue
         raise RuntimeError(
             f"Supabase user update failed: {response.status_code} {response.text}"
         )
 
+    raise RuntimeError(
+        f"Supabase user update failed: {last_response.status_code} {last_response.text}"
+    )
+
 
 def replace_interests(base_url, api_key, schema, table, user_id, teams):
     headers = supabase_headers(api_key, schema=schema)
-    table_path = encode_table_name(table)
-    delete_url = f"{base_url}/rest/v1/{table_path}?user_id=eq.{user_id}"
-    delete_response = requests.delete(delete_url, headers=headers, timeout=20)
-    if delete_response.status_code not in (200, 204):
-        raise RuntimeError(
-            f"Failed to clear existing interests: {delete_response.status_code} "
-            f"{delete_response.text}"
-        )
+    last_response = None
+    for table_path in build_table_paths(table):
+        delete_url = f"{base_url}/rest/v1/{table_path}?user_id=eq.{user_id}"
+        delete_response = requests.delete(delete_url, headers=headers, timeout=20)
+        last_response = delete_response
+        if is_missing_table(delete_response):
+            continue
+        if delete_response.status_code not in (200, 204):
+            raise RuntimeError(
+                f"Failed to clear existing interests: {delete_response.status_code} "
+                f"{delete_response.text}"
+            )
 
-    payload = [{"user_id": user_id, "team": team} for team in teams]
-    insert_url = f"{base_url}/rest/v1/{table_path}"
-    insert_response = requests.post(
-        insert_url, headers=headers, json=payload, timeout=20
-    )
-    if insert_response.status_code not in (200, 201):
-        raise RuntimeError(
-            f"Failed to insert interests: {insert_response.status_code} "
-            f"{insert_response.text}"
+        payload = [{"user_id": user_id, "team": team} for team in teams]
+        insert_url = f"{base_url}/rest/v1/{table_path}"
+        insert_response = requests.post(
+            insert_url, headers=headers, json=payload, timeout=20
         )
+        if insert_response.status_code not in (200, 201):
+            raise RuntimeError(
+                f"Failed to insert interests: {insert_response.status_code} "
+                f"{insert_response.text}"
+            )
+        return
+
+    raise RuntimeError(
+        f"Failed to clear existing interests: {last_response.status_code} "
+        f"{last_response.text}"
+    )
 
 
 @app.route("/")
