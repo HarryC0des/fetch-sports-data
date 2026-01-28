@@ -146,7 +146,7 @@ Benefits:
 - Max 3 takes per email
 - Skip email if no relevant takes
 
-Unsubscribe handled via footer link.
+Unsubscribe handled via SendGrid ASM group (per-user link).
 
 ---
 
@@ -155,13 +155,13 @@ Unsubscribe handled via footer link.
 Stored via GitHub Secrets:
 
 - `SENDGRID_API_KEY`
+- `SENDGRID_ASM_GROUP_ID`
+- `SENDGRID_FROM_EMAIL`
 - `OPEN_ROUTER_KEY`
 - `SUPABASE_KEY`
 
 Other required config:
 - `SUPABASE_URL`
-- `SENDGRID_FROM_EMAIL`
-- `SENDGRID_ASM_GROUP_ID` (recommended; SendGrid unsubscribe group)
 - `UNSUBSCRIBE_URL` (optional fallback if ASM is not configured)
 
 Never commit secrets to the repo.

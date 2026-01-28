@@ -134,7 +134,7 @@ Example:
 - Provider: SendGrid
 - Format: HTML + Plain text
 - Plain MVP design
-- Unsubscribe via footer link
+- Unsubscribe via SendGrid ASM footer link (per-user)
 
 ---
 
