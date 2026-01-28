@@ -63,8 +63,12 @@ def now_iso():
     return datetime.now(timezone.utc).isoformat()
 
 
-def supabase_headers(api_key, include_json=True):
+def supabase_headers(api_key, schema="public", include_json=True):
     headers = {"apikey": api_key, "Authorization": f"Bearer {api_key}"}
+    if schema:
+        headers["Accept-Profile"] = schema
+        if include_json:
+            headers["Content-Profile"] = schema
     if include_json:
         headers["Content-Type"] = "application/json"
         headers["Prefer"] = "return=representation"
@@ -115,51 +119,71 @@ def validate_signup_payload(payload):
     }
 
 
-def fetch_user_by_email(base_url, api_key, email):
-    url = f"{base_url}/rest/v1/users?select=id,email&email=eq.{email}"
-    response = requests.get(url, headers=supabase_headers(api_key, include_json=False), timeout=20)
+def normalize_base_url(base_url):
+    return base_url.rstrip("/")
+
+
+def fetch_user_by_email(base_url, api_key, schema, table, email):
+    url = f"{base_url}/rest/v1/{table}?select=id,email&email=eq.{email}"
+    response = requests.get(
+        url,
+        headers=supabase_headers(api_key, schema=schema, include_json=False),
+        timeout=20,
+    )
     if response.status_code != 200:
-        raise RuntimeError(f"Supabase user lookup failed: {response.status_code}")
+        raise RuntimeError(
+            f"Supabase user lookup failed: {response.status_code} {response.text}"
+        )
     data = response.json()
     return data[0] if data else None
 
 
-def create_user(base_url, api_key, payload):
-    url = f"{base_url}/rest/v1/users"
+def create_user(base_url, api_key, schema, table, payload):
+    url = f"{base_url}/rest/v1/{table}"
     response = requests.post(
-        url, headers=supabase_headers(api_key), json=payload, timeout=20
+        url, headers=supabase_headers(api_key, schema=schema), json=payload, timeout=20
     )
     if response.status_code not in (200, 201):
-        raise RuntimeError(f"Supabase user create failed: {response.status_code}")
+        raise RuntimeError(
+            f"Supabase user create failed: {response.status_code} {response.text}"
+        )
     data = response.json()
     if not data:
         raise RuntimeError("Supabase user create did not return data.")
     return data[0]["id"]
 
 
-def update_user(base_url, api_key, user_id, payload):
-    url = f"{base_url}/rest/v1/users?id=eq.{user_id}"
+def update_user(base_url, api_key, schema, table, user_id, payload):
+    url = f"{base_url}/rest/v1/{table}?id=eq.{user_id}"
     response = requests.patch(
-        url, headers=supabase_headers(api_key), json=payload, timeout=20
+        url, headers=supabase_headers(api_key, schema=schema), json=payload, timeout=20
     )
     if response.status_code not in (200, 204):
-        raise RuntimeError(f"Supabase user update failed: {response.status_code}")
+        raise RuntimeError(
+            f"Supabase user update failed: {response.status_code} {response.text}"
+        )
 
 
-def replace_interests(base_url, api_key, user_id, teams):
-    headers = supabase_headers(api_key)
-    delete_url = f"{base_url}/rest/v1/interests?user_id=eq.{user_id}"
+def replace_interests(base_url, api_key, schema, table, user_id, teams):
+    headers = supabase_headers(api_key, schema=schema)
+    delete_url = f"{base_url}/rest/v1/{table}?user_id=eq.{user_id}"
     delete_response = requests.delete(delete_url, headers=headers, timeout=20)
     if delete_response.status_code not in (200, 204):
-        raise RuntimeError("Failed to clear existing interests.")
+        raise RuntimeError(
+            f"Failed to clear existing interests: {delete_response.status_code} "
+            f"{delete_response.text}"
+        )
 
     payload = [{"user_id": user_id, "team": team} for team in teams]
-    insert_url = f"{base_url}/rest/v1/interests"
+    insert_url = f"{base_url}/rest/v1/{table}"
     insert_response = requests.post(
         insert_url, headers=headers, json=payload, timeout=20
     )
     if insert_response.status_code not in (200, 201):
-        raise RuntimeError("Failed to insert interests.")
+        raise RuntimeError(
+            f"Failed to insert interests: {insert_response.status_code} "
+            f"{insert_response.text}"
+        )
 
 
 @app.route("/")
@@ -187,9 +211,13 @@ def api_signup():
 
     supabase_url = os.getenv("SUPABASE_URL")
     supabase_key = os.getenv("SUPABASE_KEY")
+    supabase_schema = os.getenv("SUPABASE_SCHEMA", "public")
+    users_table = os.getenv("SUPABASE_USERS_TABLE", "users")
+    interests_table = os.getenv("SUPABASE_INTERESTS_TABLE", "interests")
     if not supabase_url or not supabase_key:
         return jsonify({"success": False, "error": "Server misconfigured."}), 500
 
+    supabase_url = normalize_base_url(supabase_url)
     timestamp = now_iso()
     user_payload = {
         "name": cleaned["name"],
@@ -200,15 +228,37 @@ def api_signup():
     }
 
     try:
-        existing_user = fetch_user_by_email(supabase_url, supabase_key, cleaned["email"])
+        existing_user = fetch_user_by_email(
+            supabase_url, supabase_key, supabase_schema, users_table, cleaned["email"]
+        )
         if existing_user:
-            update_user(supabase_url, supabase_key, existing_user["id"], user_payload)
+            update_user(
+                supabase_url,
+                supabase_key,
+                supabase_schema,
+                users_table,
+                existing_user["id"],
+                user_payload,
+            )
             user_id = existing_user["id"]
         else:
             user_payload["created_at"] = timestamp
-            user_id = create_user(supabase_url, supabase_key, user_payload)
+            user_id = create_user(
+                supabase_url,
+                supabase_key,
+                supabase_schema,
+                users_table,
+                user_payload,
+            )
 
-        replace_interests(supabase_url, supabase_key, user_id, cleaned["teams"])
+        replace_interests(
+            supabase_url,
+            supabase_key,
+            supabase_schema,
+            interests_table,
+            user_id,
+            cleaned["teams"],
+        )
     except Exception as exc:
         print(f"[ERROR] Signup failed: {exc}")
         return jsonify({"success": False, "error": "Signup failed."}), 500
