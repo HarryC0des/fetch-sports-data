@@ -56,6 +56,28 @@ python web/app.py
 # Visit http://localhost:5000
 ```
 
+## NBA Newsletter Signup
+
+The web app includes a production-ready NBA newsletter signup page.
+
+### Routes
+- `GET /` → Signup page
+- `POST /api/signup` → Persist user preferences to Supabase
+- `GET /analysis` → Word analysis page
+
+### Required environment variables
+```bash
+SUPABASE_URL=your_supabase_url
+SUPABASE_KEY=your_supabase_service_key
+```
+
+### Signup fields
+- Name (required)
+- Email (required, validated)
+- NBA Teams (multi-select, max 5)
+- Take style (Factual, Hot Takes, Analytical, Nuanced, Mix)
+- Email frequency (daily or weekly)
+
 ## Project Structure
 
 ```
