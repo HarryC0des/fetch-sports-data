@@ -161,6 +161,7 @@ Stored via GitHub Secrets:
 Other required config:
 - `SUPABASE_URL`
 - `SENDGRID_FROM_EMAIL`
+- `UNSUBSCRIBE_URL` (optional fallback; per-user `unsubscribe_url` supported)
 
 Never commit secrets to the repo.
 

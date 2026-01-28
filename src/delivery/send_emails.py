@@ -101,15 +101,19 @@ def main():
 
     sent_count = 0
     failed_count = 0
+    missing_unsubscribe = 0
 
     for delivery in deliveries:
+        delivery_unsubscribe = delivery.get("unsubscribe_url") or unsubscribe_url
+        if not delivery_unsubscribe:
+            missing_unsubscribe += 1
         response = send_email(
             api_key=sendgrid_key,
             from_email=from_email,
             from_name=from_name,
             delivery=delivery,
             run_date=run_date,
-            unsubscribe_url=unsubscribe_url,
+            unsubscribe_url=delivery_unsubscribe,
         )
 
         if response.status_code == 202:
@@ -125,6 +129,11 @@ def main():
         "send_emails",
         f"deliveries={len(deliveries)} sent={sent_count} failed={failed_count}",
     )
+
+    if missing_unsubscribe:
+        log_warning(
+            f"{missing_unsubscribe} deliveries missing unsubscribe URL"
+        )
 
 
 if __name__ == "__main__":
