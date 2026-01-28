@@ -14,7 +14,8 @@ On Render, set these values in the **Environment** section for your web service.
 
 **Important:** Table names are case-sensitive in PostgREST if they were created
 with quoted identifiers (e.g., `Interests`). Set the env vars above to match the
-exact table names in Supabase.
+exact table names in Supabase. Tables with spaces or capitals are supported, but
+you must set the exact name (the API will URL-encode it automatically).
 
 ### Optional (Render sets this automatically)
 - `PORT` — Render injects the port used by gunicorn

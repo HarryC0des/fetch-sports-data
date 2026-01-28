@@ -4,6 +4,7 @@ Flask Web Application for Sports Takes Newsletter signup and analysis.
 from datetime import datetime, timezone
 import os
 import re
+from urllib.parse import quote
 
 import requests
 from flask import Flask, render_template, jsonify, request
@@ -123,8 +124,21 @@ def normalize_base_url(base_url):
     return base_url.rstrip("/")
 
 
+def encode_table_name(table_name):
+    if not table_name:
+        return table_name
+    if re.match(r"^[a-z_][a-z0-9_]*$", table_name):
+        return table_name
+    if table_name.startswith('"') and table_name.endswith('"'):
+        quoted = table_name
+    else:
+        quoted = f'"{table_name}"'
+    return quote(quoted, safe="")
+
+
 def fetch_user_by_email(base_url, api_key, schema, table, email):
-    url = f"{base_url}/rest/v1/{table}?select=id,email&email=eq.{email}"
+    table_path = encode_table_name(table)
+    url = f"{base_url}/rest/v1/{table_path}?select=id,email&email=eq.{email}"
     response = requests.get(
         url,
         headers=supabase_headers(api_key, schema=schema, include_json=False),
@@ -139,7 +153,8 @@ def fetch_user_by_email(base_url, api_key, schema, table, email):
 
 
 def create_user(base_url, api_key, schema, table, payload):
-    url = f"{base_url}/rest/v1/{table}"
+    table_path = encode_table_name(table)
+    url = f"{base_url}/rest/v1/{table_path}"
     response = requests.post(
         url, headers=supabase_headers(api_key, schema=schema), json=payload, timeout=20
     )
@@ -154,7 +169,8 @@ def create_user(base_url, api_key, schema, table, payload):
 
 
 def update_user(base_url, api_key, schema, table, user_id, payload):
-    url = f"{base_url}/rest/v1/{table}?id=eq.{user_id}"
+    table_path = encode_table_name(table)
+    url = f"{base_url}/rest/v1/{table_path}?id=eq.{user_id}"
     response = requests.patch(
         url, headers=supabase_headers(api_key, schema=schema), json=payload, timeout=20
     )
@@ -166,7 +182,8 @@ def update_user(base_url, api_key, schema, table, user_id, payload):
 
 def replace_interests(base_url, api_key, schema, table, user_id, teams):
     headers = supabase_headers(api_key, schema=schema)
-    delete_url = f"{base_url}/rest/v1/{table}?user_id=eq.{user_id}"
+    table_path = encode_table_name(table)
+    delete_url = f"{base_url}/rest/v1/{table_path}?user_id=eq.{user_id}"
     delete_response = requests.delete(delete_url, headers=headers, timeout=20)
     if delete_response.status_code not in (200, 204):
         raise RuntimeError(
@@ -175,7 +192,7 @@ def replace_interests(base_url, api_key, schema, table, user_id, teams):
         )
 
     payload = [{"user_id": user_id, "team": team} for team in teams]
-    insert_url = f"{base_url}/rest/v1/{table}"
+    insert_url = f"{base_url}/rest/v1/{table_path}"
     insert_response = requests.post(
         insert_url, headers=headers, json=payload, timeout=20
     )
