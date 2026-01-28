@@ -7,6 +7,11 @@ On Render, set these values in the **Environment** section for your web service.
 - `SUPABASE_URL` — Supabase project URL
 - `SUPABASE_KEY` — Supabase service role key (server-side only)
 
+### Optional table configuration
+- `SUPABASE_SCHEMA` — schema for PostgREST (default: `public`)
+- `SUPABASE_USERS_TABLE` — users table name (default: `users`)
+- `SUPABASE_INTERESTS_TABLE` — interests table name (default: `interests`)
+
 ### Optional (Render sets this automatically)
 - `PORT` — Render injects the port used by gunicorn
 
