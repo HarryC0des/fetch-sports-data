@@ -161,7 +161,8 @@ Stored via GitHub Secrets:
 Other required config:
 - `SUPABASE_URL`
 - `SENDGRID_FROM_EMAIL`
-- `UNSUBSCRIBE_URL` (optional fallback; per-user `unsubscribe_url` supported)
+- `SENDGRID_ASM_GROUP_ID` (recommended; SendGrid unsubscribe group)
+- `UNSUBSCRIBE_URL` (optional fallback if ASM is not configured)
 
 Never commit secrets to the repo.
 

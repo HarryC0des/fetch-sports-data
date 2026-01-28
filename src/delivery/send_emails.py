@@ -53,10 +53,28 @@ def render_html(delivery, run_date, unsubscribe_url):
     )
 
 
-def send_email(api_key, from_email, from_name, delivery, run_date, unsubscribe_url):
+def resolve_unsubscribe_links(delivery, asm_group_id, fallback_url):
+    if asm_group_id:
+        return "<%asm_group_unsubscribe_raw_url%>", "<%asm_group_unsubscribe_url%>"
+    url = delivery.get("unsubscribe_url") or fallback_url
+    return url, url
+
+
+def send_email(
+    api_key,
+    from_email,
+    from_name,
+    delivery,
+    run_date,
+    unsubscribe_url,
+    asm_group_id,
+):
     subject = build_subject(delivery, run_date)
-    text_body = render_text(delivery, run_date, unsubscribe_url)
-    html_body = render_html(delivery, run_date, unsubscribe_url)
+    text_unsubscribe, html_unsubscribe = resolve_unsubscribe_links(
+        delivery, asm_group_id, unsubscribe_url
+    )
+    text_body = render_text(delivery, run_date, text_unsubscribe)
+    html_body = render_html(delivery, run_date, html_unsubscribe)
 
     payload = {
         "personalizations": [
@@ -68,6 +86,8 @@ def send_email(api_key, from_email, from_name, delivery, run_date, unsubscribe_u
             {"type": "text/html", "value": html_body},
         ],
     }
+    if asm_group_id:
+        payload["asm"] = {"group_id": int(asm_group_id)}
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -87,6 +107,7 @@ def main():
     from_email = get_env("SENDGRID_FROM_EMAIL", required=True)
     from_name = get_env("SENDGRID_FROM_NAME", default="Sports Takes")
     unsubscribe_url = get_env("UNSUBSCRIBE_URL", default="")
+    asm_group_id = get_env("SENDGRID_ASM_GROUP_ID", default="")
 
     log_start("send_emails", run_id, run_date)
 
@@ -103,9 +124,18 @@ def main():
     failed_count = 0
     missing_unsubscribe = 0
 
+    if asm_group_id:
+        try:
+            int(asm_group_id)
+        except ValueError:
+            log_error("SENDGRID_ASM_GROUP_ID must be an integer")
+            asm_group_id = ""
+        else:
+            log_info(f"Using SendGrid ASM group unsubscribe (group_id={asm_group_id})")
+
     for delivery in deliveries:
         delivery_unsubscribe = delivery.get("unsubscribe_url") or unsubscribe_url
-        if not delivery_unsubscribe:
+        if not asm_group_id and not delivery_unsubscribe:
             missing_unsubscribe += 1
         response = send_email(
             api_key=sendgrid_key,
@@ -114,6 +144,7 @@ def main():
             delivery=delivery,
             run_date=run_date,
             unsubscribe_url=delivery_unsubscribe,
+            asm_group_id=asm_group_id,
         )
 
         if response.status_code == 202:
