@@ -139,6 +139,7 @@ def main():
         selected = matching[:max_takes]
 
         subject = f"{frequency.title()} NBA Takes - {run_date}"
+        unsubscribe_url = user.get("unsubscribe_url")
 
         deliveries.append(
             {
@@ -149,6 +150,7 @@ def main():
                 "teams": teams,
                 "subject": subject,
                 "takes": selected,
+                "unsubscribe_url": unsubscribe_url,
             }
         )
 
