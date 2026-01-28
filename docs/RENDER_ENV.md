@@ -12,6 +12,10 @@ On Render, set these values in the **Environment** section for your web service.
 - `SUPABASE_USERS_TABLE` — users table name (default: `users`)
 - `SUPABASE_INTERESTS_TABLE` — interests table name (default: `interests`)
 
+**Important:** Table names are case-sensitive in PostgREST if they were created
+with quoted identifiers (e.g., `Interests`). Set the env vars above to match the
+exact table names in Supabase.
+
 ### Optional (Render sets this automatically)
 - `PORT` — Render injects the port used by gunicorn
 
