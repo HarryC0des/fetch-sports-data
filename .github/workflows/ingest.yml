@@ -26,23 +26,26 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Fetch game IDs
+        env:
+          OUTPUT_PATH: ${{ github.workspace }}/artifacts/game_ids.json
         run: python -m src.ingest.fetch_game_ids
 
       - name: Fetch game recaps
         env:
-          GAME_IDS_PATH: /tmp/game_ids.json
+          GAME_IDS_PATH: ${{ github.workspace }}/artifacts/game_ids.json
+          OUTPUT_PATH: ${{ github.workspace }}/artifacts/recaps.json
         run: python -m src.ingest.fetch_game_recaps
 
       - name: Upload game ID artifact
         uses: actions/upload-artifact@v4
         with:
           name: game-ids
-          path: /tmp/game_ids.json
+          path: artifacts/game_ids.json
           if-no-files-found: error
 
       - name: Upload recaps artifact
         uses: actions/upload-artifact@v4
         with:
           name: recaps
-          path: /tmp/recaps.json
+          path: artifacts/recaps.json
           if-no-files-found: error
