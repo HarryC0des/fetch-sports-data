@@ -24,12 +24,23 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Download recaps artifact
+      - name: Download ingest artifacts
         uses: actions/download-artifact@v4
         with:
-          name: recaps
           run-id: ${{ github.event.workflow_run.id }}
-          path: /tmp
+          path: /tmp/artifacts
+
+      - name: Prepare recaps input
+        run: |
+          if [ -f /tmp/artifacts/recaps/recaps.json ]; then
+            cp /tmp/artifacts/recaps/recaps.json /tmp/recaps.json
+          elif [ -f /tmp/artifacts/game-recaps/game_recap.json ]; then
+            cp /tmp/artifacts/game-recaps/game_recap.json /tmp/recaps.json
+          else
+            echo "::error::Recaps artifact not found in workflow run ${{ github.event.workflow_run.id }}"
+            ls -lah /tmp/artifacts
+            exit 1
+          fi
 
       - name: Install dependencies
         run: pip install -r requirements.txt
