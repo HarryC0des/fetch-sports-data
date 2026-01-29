@@ -29,7 +29,19 @@ jobs:
         with:
           name: takes
           run-id: ${{ github.event.workflow_run.id }}
-          path: /tmp
+          path: artifacts/takes
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare takes input
+        run: |
+          ARTIFACT_ROOT="${GITHUB_WORKSPACE}/artifacts/takes"
+          if [ -f "${ARTIFACT_ROOT}/takes.json" ]; then
+            cp "${ARTIFACT_ROOT}/takes.json" /tmp/takes.json
+          else
+            echo "::error::Takes artifact not found in workflow run ${{ github.event.workflow_run.id }}"
+            ls -lah "${GITHUB_WORKSPACE}/artifacts"
+            exit 1
+          fi
 
       - name: Install dependencies
         run: pip install -r requirements.txt
