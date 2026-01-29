@@ -24,22 +24,22 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Download ingest artifacts
+      - name: Download recaps artifact
         uses: actions/download-artifact@v4
         with:
+          name: recaps
           run-id: ${{ github.event.workflow_run.id }}
-          path: artifacts
+          path: artifacts/recaps
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Prepare recaps input
         run: |
-          ARTIFACT_ROOT="${GITHUB_WORKSPACE}/artifacts"
-          if [ -f "${ARTIFACT_ROOT}/recaps/recaps.json" ]; then
-            cp "${ARTIFACT_ROOT}/recaps/recaps.json" /tmp/recaps.json
-          elif [ -f "${ARTIFACT_ROOT}/game-recaps/game_recap.json" ]; then
-            cp "${ARTIFACT_ROOT}/game-recaps/game_recap.json" /tmp/recaps.json
+          ARTIFACT_ROOT="${GITHUB_WORKSPACE}/artifacts/recaps"
+          if [ -f "${ARTIFACT_ROOT}/recaps.json" ]; then
+            cp "${ARTIFACT_ROOT}/recaps.json" /tmp/recaps.json
           else
             echo "::error::Recaps artifact not found in workflow run ${{ github.event.workflow_run.id }}"
-            ls -lah "${ARTIFACT_ROOT}"
+            ls -lah "${GITHUB_WORKSPACE}/artifacts"
             exit 1
           fi
 
