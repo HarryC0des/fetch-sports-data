@@ -38,9 +38,11 @@ jobs:
         with:
           name: game-ids
           path: /tmp/game_ids.json
+          if-no-files-found: error
 
       - name: Upload recaps artifact
         uses: actions/upload-artifact@v4
         with:
           name: recaps
           path: /tmp/recaps.json
+          if-no-files-found: error
