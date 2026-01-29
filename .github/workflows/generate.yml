@@ -28,17 +28,18 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           run-id: ${{ github.event.workflow_run.id }}
-          path: /tmp/artifacts
+          path: artifacts
 
       - name: Prepare recaps input
         run: |
-          if [ -f /tmp/artifacts/recaps/recaps.json ]; then
-            cp /tmp/artifacts/recaps/recaps.json /tmp/recaps.json
-          elif [ -f /tmp/artifacts/game-recaps/game_recap.json ]; then
-            cp /tmp/artifacts/game-recaps/game_recap.json /tmp/recaps.json
+          ARTIFACT_ROOT="${GITHUB_WORKSPACE}/artifacts"
+          if [ -f "${ARTIFACT_ROOT}/recaps/recaps.json" ]; then
+            cp "${ARTIFACT_ROOT}/recaps/recaps.json" /tmp/recaps.json
+          elif [ -f "${ARTIFACT_ROOT}/game-recaps/game_recap.json" ]; then
+            cp "${ARTIFACT_ROOT}/game-recaps/game_recap.json" /tmp/recaps.json
           else
             echo "::error::Recaps artifact not found in workflow run ${{ github.event.workflow_run.id }}"
-            ls -lah /tmp/artifacts
+            ls -lah "${ARTIFACT_ROOT}"
             exit 1
           fi
 
