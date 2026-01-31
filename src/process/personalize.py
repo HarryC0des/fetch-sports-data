@@ -120,7 +120,6 @@ def main():
 
         desired_style = normalize_style(user.get("take_style") or "mix")
         matching = []
-        team_coverage = {team: False for team in teams}
         for take in takes:
             take_style = normalize_style(take.get("style") or "mix")
             if take_style != desired_style:
@@ -129,18 +128,11 @@ def main():
             matched_any = False
             for team in teams:
                 if matches_team(team, aliases):
-                    team_coverage[team] = True
                     matched_any = True
             if matched_any:
                 matching.append(take)
 
         if not matching:
-            continue
-        if not all(team_coverage.values()):
-            missing = [team for team, covered in team_coverage.items() if not covered]
-            log_info(
-                f"Skipping user_id={user_id} missing takes for teams: {', '.join(missing)}"
-            )
             continue
 
         matching.sort(
