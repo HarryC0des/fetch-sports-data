@@ -171,7 +171,8 @@ def main():
                 continue
 
             content = choices[0].get("message", {}).get("content", "").strip()
-            if not content or content.upper() == "INSUFFICIENT FACTS TO GENERATE TAKE":
+            normalized = content.upper()
+            if not content or normalized.startswith("INSUFFICIENT FACTS"):
                 errors.append(
                     {
                         "game_id": game.get("game_id"),
