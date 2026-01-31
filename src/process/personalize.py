@@ -125,7 +125,11 @@ def main():
             if take_style != desired_style:
                 continue
             aliases = take.get("team_aliases") or take.get("teams") or []
-            if any(matches_team(team, aliases) for team in teams):
+            matched_any = False
+            for team in teams:
+                if matches_team(team, aliases):
+                    matched_any = True
+            if matched_any:
                 matching.append(take)
 
         if not matching:

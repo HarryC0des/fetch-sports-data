@@ -1,5 +1,5 @@
 """
-Flask Web Application for Sports Takes Newsletter signup and analysis.
+Flask Web Application for Sports Takes Newsletter signup.
 """
 from datetime import datetime, timezone
 import os
@@ -8,8 +8,6 @@ from urllib.parse import quote
 
 import requests
 from flask import Flask, render_template, jsonify, request
-
-from src.analyzer import analyze_records_by_date
 
 app = Flask(__name__, template_folder="templates")
 
@@ -273,11 +271,6 @@ def signup_page():
     )
 
 
-@app.route("/analysis")
-def analysis_page():
-    return render_template("analysis.html")
-
-
 @app.route("/api/signup", methods=["POST"])
 def api_signup():
     payload = request.get_json(silent=True) or {}
@@ -340,18 +333,6 @@ def api_signup():
         return jsonify({"success": False, "error": "Signup failed."}), 500
 
     return jsonify({"success": True, "message": "Signup saved."})
-
-
-@app.route("/api/analyze", methods=["GET"])
-def api_analyze():
-    try:
-        print("[DEBUG] API /analyze called")
-        results = analyze_records_by_date()
-        print(f"[DEBUG] Analysis returned results for {len(results)} dates")
-        return jsonify({"success": True, "data": results})
-    except Exception as e:
-        print(f"[ERROR] Analysis failed: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
 
 
 if __name__ == "__main__":

@@ -1,11 +1,11 @@
 """
-Sports Data Analysis Package
+Sports Takes Newsletter package.
 
-Modules:
-- rss_fetcher: RSS feed fetching and processing
-- ai_generator: AI-powered sports takes generation
-- analyzer: Word frequency analysis
-- utils: Shared utilities and constants
+Core modules live under:
+- ingest
+- process
+- delivery
+- pipeline
 """
 
 __version__ = "1.0.0"
