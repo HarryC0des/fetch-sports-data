@@ -137,6 +137,10 @@ def main():
         if not matching:
             continue
         if not all(team_coverage.values()):
+            missing = [team for team, covered in team_coverage.items() if not covered]
+            log_info(
+                f"Skipping user_id={user_id} missing takes for teams: {', '.join(missing)}"
+            )
             continue
 
         matching.sort(
