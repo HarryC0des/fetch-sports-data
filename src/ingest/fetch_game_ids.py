@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timedelta, timezone
 
 from src.pipeline.common import (
     build_run_id,
@@ -33,7 +34,13 @@ def resolve_scoreboard_date():
         if len(cleaned) != 8 or not cleaned.isdigit():
             raise ValueError("Invalid SCOREBOARD_DATE. Use YYYY-MM-DD or YYYYMMDD.")
         return cleaned
-    return resolve_run_date().replace("-", "")
+    run_date = resolve_run_date()
+    try:
+        parsed = datetime.strptime(run_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+    except ValueError:
+        parsed = datetime.now(timezone.utc)
+    previous_day = parsed - timedelta(days=1)
+    return previous_day.strftime("%Y%m%d")
 
 
 def extract_team_info(competitor):
