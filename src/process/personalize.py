@@ -114,26 +114,41 @@ def main():
 
     deliveries = []
     run_date_obj = parse_run_date(run_date)
+    totals = {
+        "users": 0,
+        "skipped_missing_email": 0,
+        "skipped_frequency": 0,
+        "skipped_no_teams": 0,
+        "skipped_no_matches": 0,
+        "delivered": 0,
+    }
 
     for user in users:
+        totals["users"] += 1
         user_id = str(user.get("id"))
         email = user.get("email")
         if not user_id or not email:
             log_warning("Skipping user with missing id or email")
+            totals["skipped_missing_email"] += 1
             continue
 
         frequency = (user.get("frequency") or "daily").strip().lower()
         if not should_send_user(frequency, run_date_obj, weekly_send_day):
+            totals["skipped_frequency"] += 1
             continue
 
         teams = user_teams.get(user_id, [])
         if not teams:
             log_info(f"Skipping user_id={user_id} with no teams selected")
+            totals["skipped_no_teams"] += 1
             continue
 
         desired_style = normalize_style(user.get("take_style") or "mix")
         matching = []
         for take in takes:
+            take_text = (take.get("take_text") or "").strip()
+            if take_text.upper().startswith("INSUFFIC"):
+                continue
             take_style = normalize_style(take.get("style") or "mix")
             if take_style != desired_style:
                 continue
@@ -150,6 +165,7 @@ def main():
                 f"Skipping user_id={user_id} no matching takes "
                 f"(style={desired_style} teams={', '.join(teams)})"
             )
+            totals["skipped_no_matches"] += 1
             continue
 
         matching.sort(
@@ -174,6 +190,7 @@ def main():
                 "unsubscribe_url": unsubscribe_url,
             }
         )
+        totals["delivered"] += 1
 
     output_payload = {
         "run_id": run_id,
@@ -187,6 +204,18 @@ def main():
     log_end(
         "personalize",
         f"deliveries={len(deliveries)} output={output_path}",
+    )
+    log_info(
+        "User summary: total=%d delivered=%d missing_email=%d skipped_frequency=%d "
+        "skipped_no_teams=%d skipped_no_matches=%d"
+        % (
+            totals["users"],
+            totals["delivered"],
+            totals["skipped_missing_email"],
+            totals["skipped_frequency"],
+            totals["skipped_no_teams"],
+            totals["skipped_no_matches"],
+        )
     )
 
 

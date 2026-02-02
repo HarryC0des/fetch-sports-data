@@ -288,7 +288,11 @@ def main():
 
             content = choices[0].get("message", {}).get("content", "").strip()
             normalized = content.upper()
-            if not content or normalized.startswith("INSUFFICIENT FACTS"):
+            if (
+                not content
+                or normalized.startswith("INSUFFIC")
+                or "INSUFFICIENT FACTS" in normalized
+            ):
                 errors.append(
                     {
                         "game_id": game.get("game_id"),
