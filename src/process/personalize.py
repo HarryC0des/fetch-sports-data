@@ -1,4 +1,5 @@
 import datetime
+from collections import Counter
 import requests
 
 from src.pipeline.common import (
@@ -84,6 +85,17 @@ def main():
     takes_payload = load_json(input_path)
     takes = takes_payload.get("takes", [])
     log_info(f"Loaded {len(takes)} takes from {input_path}")
+    style_counts = Counter(
+        normalize_style(take.get("style") or "mix") for take in takes
+    )
+    available_teams = sorted(
+        {team for take in takes for team in (take.get("teams") or [])}
+    )
+    log_info(f"Available take styles: {dict(style_counts)}")
+    if available_teams:
+        log_info(f"Available teams in takes: {', '.join(available_teams)}")
+    else:
+        log_info("No teams found in takes payload")
 
     users = fetch_supabase_rows(supabase_url, supabase_key, users_table, users_query)
     interests = fetch_supabase_rows(
@@ -116,6 +128,7 @@ def main():
 
         teams = user_teams.get(user_id, [])
         if not teams:
+            log_info(f"Skipping user_id={user_id} with no teams selected")
             continue
 
         desired_style = normalize_style(user.get("take_style") or "mix")
@@ -133,6 +146,10 @@ def main():
                 matching.append(take)
 
         if not matching:
+            log_info(
+                f"Skipping user_id={user_id} no matching takes "
+                f"(style={desired_style} teams={', '.join(teams)})"
+            )
             continue
 
         matching.sort(
