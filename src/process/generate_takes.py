@@ -32,11 +32,24 @@ MODEL_DEFAULT = "tngtech/tng-r1t-chimera:free"
 STYLE_KEYS = ["factual", "hot_takes", "analytical", "nuanced", "mix"]
 
 
-def call_llm(api_url, api_key, model, messages, temperature, max_tokens):
+def call_llm(
+    api_url,
+    api_key,
+    model,
+    messages,
+    temperature,
+    max_tokens,
+    referer,
+    title,
+):
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
     }
+    if referer:
+        headers["HTTP-Referer"] = referer
+    if title:
+        headers["X-Title"] = title
     payload = {
         "model": model,
         "messages": messages,
@@ -76,6 +89,11 @@ def main():
     api_url = get_env("OPEN_ROUTER_API_URL", default=API_URL_DEFAULT)
     model = get_env("OPEN_ROUTER_MODEL", default=MODEL_DEFAULT)
     api_key = get_env("OPEN_ROUTER_KEY", required=True)
+    referer = get_env(
+        "OPEN_ROUTER_REFERER",
+        default="https://github.com/HarryC0des/fetch-sports-data",
+    )
+    title = get_env("OPEN_ROUTER_TITLE", default="Sports Takes Newsletter")
     supabase_url = get_env("SUPABASE_URL", required=True).rstrip("/")
     supabase_key = get_env("SUPABASE_KEY", required=True)
     users_table = get_env("SUPABASE_USERS_TABLE", default="users")
@@ -206,13 +224,23 @@ def main():
                 messages=messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
+                referer=referer,
+                title=title,
             )
 
             if response.status_code != 200:
                 failed_requests += 1
+                response_detail = response.text.strip().replace("\n", " ")
+                if len(response_detail) > 300:
+                    response_detail = response_detail[:300] + "..."
+                retry_after = response.headers.get("Retry-After")
+                if retry_after:
+                    log_warning(
+                        f"LLM Retry-After for game_id={game.get('game_id')}: {retry_after}"
+                    )
                 log_error(
                     f"LLM error for game_id={game.get('game_id')} style={style_key}: "
-                    f"{response.status_code}"
+                    f"{response.status_code} {response_detail}"
                 )
                 errors.append(
                     {
