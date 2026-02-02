@@ -55,6 +55,8 @@ jobs:
         env:
           FACTS_PATH: /tmp/facts.json
           OPEN_ROUTER_KEY: ${{ secrets.OPEN_ROUTER_KEY }}
+          SUPABASE_URL: https://hzncchogxeyexnwgurkk.supabase.co
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python -m src.process.generate_takes
 
       - name: Upload facts artifact
