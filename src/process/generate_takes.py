@@ -184,9 +184,9 @@ def main():
 
         game_aliases = game.get("team_aliases") or game.get("teams") or []
         required_styles = set()
-        for team_name, styles in team_style_map.items():
+        for team_name, team_styles in team_style_map.items():
             if matches_team(team_name, game_aliases):
-                required_styles.update(styles)
+                required_styles.update(team_styles)
 
         if not required_styles:
             skipped_games += 1
