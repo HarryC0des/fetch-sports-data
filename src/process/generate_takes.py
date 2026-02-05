@@ -27,7 +27,7 @@ from src.pipeline.team_utils import matches_team
 
 
 API_URL_DEFAULT = "https://openrouter.ai/api/v1/chat/completions"
-MODEL_DEFAULT = "tngtech/tng-r1t-chimera:free"
+MODEL_DEFAULT = "arcee-ai/trinity-large-preview:free"
 
 STYLE_KEYS = ["factual", "hot_takes", "analytical", "nuanced", "mix"]
 
