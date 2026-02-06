@@ -1,7 +1,7 @@
 {
-  "factual": "Neutral tone. Objective language. No opinions.",
-  "hot_takes": "Strong opinions. Confident tone. Still fact-grounded.",
-  "analytical": "Explain causes and implications. Reference trends and context.",
-  "nuanced": "Balanced perspectives. Acknowledge uncertainty.",
+  "factual": "Generate confident, debate-ready arguments that challenge consensus, use selective analytics and historical framing, anticipate counterarguments, and prioritize long-term vindication over immediate agreement.",
+  "hot_takes": "Generate confident, emotionally charged opinions framed as moral judgments, expressed with absolutist language, minimal hedging, binary outcomes, and escalating rhetorical intensity. Accuracy is secondary to conviction and entertainment.",
+  "analytical": "Generate careful, evidence-backed analysis grounded in film study and data, with explicit uncertainty, precise language, and minimal performative flair.",
+  "nuanced": "Generate conversational takes that rely on historical comparisons, narrative intuition, and tier-based reasoning. Allow uncertainty, mid-take revisions, fan bias, and cultural references. Sound like a smart friend talking through a theory rather than delivering a verdict.",
   "mix": "Blend of factual, analytical, and nuanced with light opinion."
 }
