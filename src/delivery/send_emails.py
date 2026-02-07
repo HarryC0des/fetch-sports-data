@@ -1,4 +1,5 @@
 import html
+import re
 import requests
 
 from src.pipeline.common import (
@@ -15,6 +16,7 @@ from src.pipeline.common import (
 
 
 SENDGRID_API_URL = "https://api.sendgrid.com/v3/mail/send"
+DEFAULT_TEMPLATE_ID = "98126e36-56b8-4cb1-b9cf-6477132dea50"
 
 
 def build_subject(delivery, run_date):
@@ -24,7 +26,8 @@ def build_subject(delivery, run_date):
 def render_text(delivery, run_date, unsubscribe_url):
     lines = [f"Your NBA takes for {run_date}:"]
     for take in delivery.get("takes", []):
-        teams = ", ".join(take.get("teams", []))
+        focus_team = take.get("focus_team")
+        teams = focus_team or ", ".join(take.get("teams", []))
         lines.append(f"- {teams}: {take.get('take_text', '').strip()}")
     if unsubscribe_url:
         lines.append("")
@@ -35,7 +38,8 @@ def render_text(delivery, run_date, unsubscribe_url):
 def render_html(delivery, run_date, unsubscribe_url):
     items = []
     for take in delivery.get("takes", []):
-        teams = html.escape(", ".join(take.get("teams", [])))
+        focus_team = take.get("focus_team")
+        teams = html.escape(focus_team or ", ".join(take.get("teams", [])))
         text = html.escape(take.get("take_text", "").strip())
         items.append(f"<li><strong>{teams}</strong>: {text}</li>")
     items_html = "\n".join(items)
@@ -53,6 +57,45 @@ def render_html(delivery, run_date, unsubscribe_url):
     )
 
 
+def slugify_team_name(team_name):
+    if not team_name:
+        return ""
+    value = team_name.strip().lower()
+    value = re.sub(r"[^a-z0-9]+", "_", value)
+    return value.strip("_")
+
+
+def build_template_data(delivery, logo_base_url, logo_ext):
+    data = {}
+    takes = delivery.get("takes", []) or []
+    for index in range(3):
+        slot = index + 1
+        team_key = f"nba_team_{slot}"
+        take_key = f"nba_take_{slot}"
+        logo_key = f"nba_logo_{slot}"
+        if index >= len(takes):
+            data[team_key] = ""
+            data[take_key] = ""
+            data[logo_key] = ""
+            continue
+
+        take = takes[index]
+        focus_team = take.get("focus_team")
+        team_name = focus_team or (take.get("teams") or [""])[0]
+        take_text = take.get("take_text", "").strip()
+        slug = slugify_team_name(team_name)
+        if logo_base_url and slug:
+            logo_url = f"{logo_base_url}/{slug}.{logo_ext}"
+        else:
+            logo_url = ""
+
+        data[team_key] = team_name
+        data[take_key] = take_text
+        data[logo_key] = logo_url
+
+    return data
+
+
 def resolve_unsubscribe_links(delivery, asm_group_id, fallback_url):
     if asm_group_id:
         return "<%asm_group_unsubscribe_raw_url%>", "<%asm_group_unsubscribe_url%>"
@@ -68,6 +111,9 @@ def send_email(
     run_date,
     unsubscribe_url,
     asm_group_id,
+    template_id,
+    logo_base_url,
+    logo_ext,
 ):
     subject = build_subject(delivery, run_date)
     text_unsubscribe, html_unsubscribe = resolve_unsubscribe_links(
@@ -81,11 +127,17 @@ def send_email(
             {"to": [{"email": delivery["email"]}], "subject": subject}
         ],
         "from": {"email": from_email, "name": from_name},
-        "content": [
+    }
+    if template_id:
+        payload["template_id"] = template_id
+        payload["personalizations"][0]["dynamic_template_data"] = build_template_data(
+            delivery, logo_base_url, logo_ext
+        )
+    else:
+        payload["content"] = [
             {"type": "text/plain", "value": text_body},
             {"type": "text/html", "value": html_body},
-        ],
-    }
+        ]
     if asm_group_id:
         payload["asm"] = {"group_id": int(asm_group_id)}
 
@@ -108,6 +160,9 @@ def main():
     from_name = get_env("SENDGRID_FROM_NAME", default="Sports Takes")
     unsubscribe_url = get_env("UNSUBSCRIBE_URL", default="")
     asm_group_id = get_env("SENDGRID_ASM_GROUP_ID", default="")
+    template_id = get_env("SENDGRID_TEMPLATE_ID", default=DEFAULT_TEMPLATE_ID)
+    logo_base_url = get_env("NBA_LOGO_BASE_URL", default="")
+    logo_ext = get_env("NBA_LOGO_EXT", default="png")
 
     log_start("send_emails", run_id, run_date)
 
@@ -132,6 +187,10 @@ def main():
             asm_group_id = ""
         else:
             log_info(f"Using SendGrid ASM group unsubscribe (group_id={asm_group_id})")
+    if template_id:
+        if not logo_base_url:
+            log_error("NBA_LOGO_BASE_URL is required when using a SendGrid template.")
+            return
 
     for delivery in deliveries:
         delivery_unsubscribe = delivery.get("unsubscribe_url") or unsubscribe_url
@@ -145,6 +204,9 @@ def main():
             run_date=run_date,
             unsubscribe_url=delivery_unsubscribe,
             asm_group_id=asm_group_id,
+            template_id=template_id,
+            logo_base_url=logo_base_url,
+            logo_ext=logo_ext,
         )
 
         if response.status_code == 202:

@@ -55,10 +55,11 @@ def build_user_prompt(
     max_words,
     audience,
     disclaimer,
+    focus_team=None,
 ):
     team_line = ", ".join(teams) if teams else "Unknown teams"
     fact_lines = "\n".join(f"- {fact}" for fact in facts)
-    return (
+    prompt = (
         "Facts:\n"
         f"- Teams: {team_line}\n"
         f"{fact_lines}\n\n"
@@ -71,3 +72,6 @@ def build_user_prompt(
         f"- Factual source disclaimer: {disclaimer}\n"
         "- If facts are insufficient, respond with: INSUFFICIENT FACTS TO GENERATE TAKE\n"
     )
+    if focus_team:
+        prompt = f"{prompt}\nEnsure takes focus on {focus_team}"
+    return prompt

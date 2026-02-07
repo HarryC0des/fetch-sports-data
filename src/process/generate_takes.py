@@ -183,140 +183,144 @@ def main():
             continue
 
         game_aliases = game.get("team_aliases") or game.get("teams") or []
-        required_styles = set()
-        for team_name, team_styles in team_style_map.items():
+        focus_teams = []
+        for team_name in team_style_map:
             if matches_team(team_name, game_aliases):
-                required_styles.update(team_styles)
+                focus_teams.append(team_name)
 
-        if not required_styles:
+        if not focus_teams:
             skipped_games += 1
             continue
 
         considered_games += 1
 
-        for style_key in STYLE_KEYS:
-            if style_key not in required_styles:
-                continue
-            style_text = styles.get(style_key)
-            if not style_text:
-                log_warning(f"Missing style prompt for {style_key}")
-                continue
+        for focus_team in focus_teams:
+            required_styles = team_style_map.get(focus_team, set())
+            for style_key in STYLE_KEYS:
+                if style_key not in required_styles:
+                    continue
+                style_text = styles.get(style_key)
+                if not style_text:
+                    log_warning(f"Missing style prompt for {style_key}")
+                    continue
 
-            user_prompt = build_user_prompt(
-                teams=game.get("teams", []),
-                facts=facts,
-                style=style_label(style_key),
-                style_guidance=style_text,
-                max_words=max_words,
-                audience=audience,
-                disclaimer=disclaimer,
-            )
-            messages = [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
+                user_prompt = build_user_prompt(
+                    teams=game.get("teams", []),
+                    facts=facts,
+                    style=style_label(style_key),
+                    style_guidance=style_text,
+                    max_words=max_words,
+                    audience=audience,
+                    disclaimer=disclaimer,
+                    focus_team=focus_team,
+                )
+                messages = [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ]
 
-            total_requests += 1
-            response = call_llm(
-                api_url=api_url,
-                api_key=api_key,
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                max_tokens=max_tokens,
-                referer=referer,
-                title=title,
-            )
+                total_requests += 1
+                response = call_llm(
+                    api_url=api_url,
+                    api_key=api_key,
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    referer=referer,
+                    title=title,
+                )
 
-            if response.status_code != 200:
-                failed_requests += 1
-                response_detail = response.text.strip().replace("\n", " ")
-                if len(response_detail) > 300:
-                    response_detail = response_detail[:300] + "..."
-                retry_after = response.headers.get("Retry-After")
-                if retry_after:
-                    log_warning(
-                        f"LLM Retry-After for game_id={game.get('game_id')}: {retry_after}"
+                if response.status_code != 200:
+                    failed_requests += 1
+                    response_detail = response.text.strip().replace("\n", " ")
+                    if len(response_detail) > 300:
+                        response_detail = response_detail[:300] + "..."
+                    retry_after = response.headers.get("Retry-After")
+                    if retry_after:
+                        log_warning(
+                            f"LLM Retry-After for game_id={game.get('game_id')}: {retry_after}"
+                        )
+                    log_error(
+                        f"LLM error for game_id={game.get('game_id')} style={style_key}: "
+                        f"{response.status_code} {response_detail}"
                     )
-                log_error(
-                    f"LLM error for game_id={game.get('game_id')} style={style_key}: "
-                    f"{response.status_code} {response_detail}"
-                )
-                errors.append(
+                    errors.append(
+                        {
+                            "game_id": game.get("game_id"),
+                            "style": style_key,
+                            "error": f"http_{response.status_code}",
+                        }
+                    )
+                    if pause_seconds > 0:
+                        time.sleep(pause_seconds)
+                    continue
+
+                data = response.json()
+                if "error" in data:
+                    failed_requests += 1
+                    error_message = data.get("error", {}).get("message", "unknown_error")
+                    log_error(f"LLM response error: {error_message}")
+                    errors.append(
+                        {
+                            "game_id": game.get("game_id"),
+                            "style": style_key,
+                            "error": error_message,
+                        }
+                    )
+                    if pause_seconds > 0:
+                        time.sleep(pause_seconds)
+                    continue
+
+                choices = data.get("choices") or []
+                if not choices:
+                    failed_requests += 1
+                    log_error(
+                        f"No LLM choices for game_id={game.get('game_id')} style={style_key}"
+                    )
+                    errors.append(
+                        {
+                            "game_id": game.get("game_id"),
+                            "style": style_key,
+                            "error": "no_choices",
+                        }
+                    )
+                    if pause_seconds > 0:
+                        time.sleep(pause_seconds)
+                    continue
+
+                content = choices[0].get("message", {}).get("content", "").strip()
+                normalized = content.upper()
+                if (
+                    not content
+                    or normalized.startswith("INSUFFIC")
+                    or "INSUFFICIENT FACTS" in normalized
+                ):
+                    errors.append(
+                        {
+                            "game_id": game.get("game_id"),
+                            "style": style_key,
+                            "error": "insufficient_facts",
+                        }
+                    )
+                    if pause_seconds > 0:
+                        time.sleep(pause_seconds)
+                    continue
+
+                takes.append(
                     {
                         "game_id": game.get("game_id"),
-                        "style": style_key,
-                        "error": f"http_{response.status_code}",
+                        "game_date": game.get("game_date"),
+                        "teams": game.get("teams", []),
+                        "team_aliases": game.get("team_aliases", []),
+                        "focus_team": focus_team,
+                        "style": normalize_style(style_key),
+                        "take_text": content,
                     }
                 )
+
                 if pause_seconds > 0:
                     time.sleep(pause_seconds)
-                continue
-
-            data = response.json()
-            if "error" in data:
-                failed_requests += 1
-                error_message = data.get("error", {}).get("message", "unknown_error")
-                log_error(f"LLM response error: {error_message}")
-                errors.append(
-                    {
-                        "game_id": game.get("game_id"),
-                        "style": style_key,
-                        "error": error_message,
-                    }
-                )
-                if pause_seconds > 0:
-                    time.sleep(pause_seconds)
-                continue
-
-            choices = data.get("choices") or []
-            if not choices:
-                failed_requests += 1
-                log_error(
-                    f"No LLM choices for game_id={game.get('game_id')} style={style_key}"
-                )
-                errors.append(
-                    {
-                        "game_id": game.get("game_id"),
-                        "style": style_key,
-                        "error": "no_choices",
-                    }
-                )
-                if pause_seconds > 0:
-                    time.sleep(pause_seconds)
-                continue
-
-            content = choices[0].get("message", {}).get("content", "").strip()
-            normalized = content.upper()
-            if (
-                not content
-                or normalized.startswith("INSUFFIC")
-                or "INSUFFICIENT FACTS" in normalized
-            ):
-                errors.append(
-                    {
-                        "game_id": game.get("game_id"),
-                        "style": style_key,
-                        "error": "insufficient_facts",
-                    }
-                )
-                if pause_seconds > 0:
-                    time.sleep(pause_seconds)
-                continue
-
-            takes.append(
-                {
-                    "game_id": game.get("game_id"),
-                    "game_date": game.get("game_date"),
-                    "teams": game.get("teams", []),
-                    "team_aliases": game.get("team_aliases", []),
-                    "style": normalize_style(style_key),
-                    "take_text": content,
-                }
-            )
-
-            if pause_seconds > 0:
-                time.sleep(pause_seconds)
 
     if total_requests:
         failure_rate = failed_requests / total_requests

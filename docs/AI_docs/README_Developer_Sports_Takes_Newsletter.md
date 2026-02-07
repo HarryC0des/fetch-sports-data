@@ -157,6 +157,8 @@ Stored via GitHub Secrets:
 - `SENDGRID_API_KEY`
 - `SENDGRID_ASM_GROUP_ID`
 - `SENDGRID_FROM_EMAIL`
+- `SENDGRID_TEMPLATE_ID` (dynamic template ID)
+- `NBA_LOGO_BASE_URL` (public base URL for team logos)
 - `OPEN_ROUTER_KEY`
 - `SUPABASE_KEY`
 
