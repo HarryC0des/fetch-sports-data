@@ -152,12 +152,13 @@ def main():
             take_style = normalize_style(take.get("style") or "mix")
             if take_style != desired_style:
                 continue
+            focus_team = take.get("focus_team")
+            if focus_team:
+                if any(matches_team(team, [focus_team]) for team in teams):
+                    matching.append(take)
+                continue
             aliases = take.get("team_aliases") or take.get("teams") or []
-            matched_any = False
-            for team in teams:
-                if matches_team(team, aliases):
-                    matched_any = True
-            if matched_any:
+            if any(matches_team(team, aliases) for team in teams):
                 matching.append(take)
 
         if not matching:

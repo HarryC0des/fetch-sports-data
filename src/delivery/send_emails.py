@@ -24,7 +24,8 @@ def build_subject(delivery, run_date):
 def render_text(delivery, run_date, unsubscribe_url):
     lines = [f"Your NBA takes for {run_date}:"]
     for take in delivery.get("takes", []):
-        teams = ", ".join(take.get("teams", []))
+        focus_team = take.get("focus_team")
+        teams = focus_team or ", ".join(take.get("teams", []))
         lines.append(f"- {teams}: {take.get('take_text', '').strip()}")
     if unsubscribe_url:
         lines.append("")
@@ -35,7 +36,8 @@ def render_text(delivery, run_date, unsubscribe_url):
 def render_html(delivery, run_date, unsubscribe_url):
     items = []
     for take in delivery.get("takes", []):
-        teams = html.escape(", ".join(take.get("teams", [])))
+        focus_team = take.get("focus_team")
+        teams = html.escape(focus_team or ", ".join(take.get("teams", [])))
         text = html.escape(take.get("take_text", "").strip())
         items.append(f"<li><strong>{teams}</strong>: {text}</li>")
     items_html = "\n".join(items)
