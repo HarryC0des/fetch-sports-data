@@ -41,6 +41,8 @@ Required GitHub Secrets:
 - `SENDGRID_API_KEY`
 - `SENDGRID_FROM_EMAIL`
 - `SENDGRID_ASM_GROUP_ID`
+- `SENDGRID_TEMPLATE_ID` (SendGrid dynamic template ID)
+- `NBA_LOGO_BASE_URL` (public base URL for team logos)
 - `SUPABASE_KEY`
 
 ## Documentation
