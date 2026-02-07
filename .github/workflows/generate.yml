@@ -1,0 +1,73 @@
+name: Generate NBA Takes
+
+on:
+  workflow_run:
+    workflows: ["Ingest ESPN NBA Recaps"]
+    types: [completed]
+
+jobs:
+  generate:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+    env:
+      RUN_ID: ${{ github.run_id }}
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Download recaps artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: recaps
+          run-id: ${{ github.event.workflow_run.id }}
+          path: artifacts/recaps
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare recaps input
+        run: |
+          ARTIFACT_ROOT="${GITHUB_WORKSPACE}/artifacts/recaps"
+          if [ -f "${ARTIFACT_ROOT}/recaps.json" ]; then
+            cp "${ARTIFACT_ROOT}/recaps.json" /tmp/recaps.json
+          else
+            echo "::error::Recaps artifact not found in workflow run ${{ github.event.workflow_run.id }}"
+            ls -lah "${GITHUB_WORKSPACE}/artifacts"
+            exit 1
+          fi
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Extract facts
+        env:
+          RECAPS_PATH: /tmp/recaps.json
+        run: python -m src.process.extract_facts
+
+      - name: Generate takes
+        env:
+          FACTS_PATH: /tmp/facts.json
+          OPEN_ROUTER_KEY: ${{ secrets.OPEN_ROUTER_KEY }}
+          SUPABASE_URL: https://hzncchogxeyexnwgurkk.supabase.co
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          LLM_REQUEST_DELAY_SECONDS: "2"
+        run: python -m src.process.generate_takes
+
+      - name: Upload facts artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: facts
+          path: /tmp/facts.json
+
+      - name: Upload takes artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: takes
+          path: /tmp/takes.json

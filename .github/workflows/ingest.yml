@@ -1,0 +1,51 @@
+name: Ingest ESPN NBA Recaps
+
+on:
+  schedule:
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RUN_ID: ${{ github.run_id }}
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Fetch game IDs
+        env:
+          OUTPUT_PATH: ${{ github.workspace }}/artifacts/game_ids.json
+        run: python -m src.ingest.fetch_game_ids
+
+      - name: Fetch game recaps
+        env:
+          GAME_IDS_PATH: ${{ github.workspace }}/artifacts/game_ids.json
+          OUTPUT_PATH: ${{ github.workspace }}/artifacts/recaps.json
+        run: python -m src.ingest.fetch_game_recaps
+
+      - name: Upload game ID artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: game-ids
+          path: artifacts/game_ids.json
+          if-no-files-found: error
+
+      - name: Upload recaps artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: recaps
+          path: artifacts/recaps.json
+          if-no-files-found: error
