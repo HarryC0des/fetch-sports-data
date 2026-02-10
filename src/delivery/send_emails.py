@@ -151,6 +151,26 @@ def send_email(
     return response
 
 
+def log_sendgrid_response(delivery, response):
+    message_id = response.headers.get("X-Message-Id") or response.headers.get(
+        "X-Message-ID"
+    )
+    if response.status_code == 202:
+        log_info(
+            "SendGrid accepted email user_id=%s message_id=%s"
+            % (delivery.get("user_id"), message_id or "unknown")
+        )
+        return
+
+    response_detail = response.text.strip().replace("\n", " ")
+    if len(response_detail) > 300:
+        response_detail = response_detail[:300] + "..."
+    log_error(
+        "SendGrid error for user_id=%s status=%s detail=%s"
+        % (delivery.get("user_id"), response.status_code, response_detail)
+    )
+
+
 def main():
     run_id = build_run_id()
     run_date = resolve_run_date()
@@ -189,8 +209,10 @@ def main():
             log_info(f"Using SendGrid ASM group unsubscribe (group_id={asm_group_id})")
     if template_id:
         if not logo_base_url:
-            log_error("NBA_LOGO_BASE_URL is required when using a SendGrid template.")
-            return
+            raise RuntimeError(
+                "NBA_LOGO_BASE_URL is required when using a SendGrid template."
+            )
+        log_info(f"Using SendGrid template_id={template_id}")
 
     for delivery in deliveries:
         delivery_unsubscribe = delivery.get("unsubscribe_url") or unsubscribe_url
@@ -209,14 +231,11 @@ def main():
             logo_ext=logo_ext,
         )
 
+        log_sendgrid_response(delivery, response)
         if response.status_code == 202:
             sent_count += 1
         else:
             failed_count += 1
-            log_error(
-                f"SendGrid error for user_id={delivery.get('user_id')}: "
-                f"{response.status_code}"
-            )
 
     log_end(
         "send_emails",
@@ -227,6 +246,10 @@ def main():
         log_warning(
             f"{missing_unsubscribe} deliveries missing unsubscribe URL"
         )
+    if failed_count:
+        log_warning(f"SendGrid failed deliveries: {failed_count}")
+    if deliveries and sent_count == 0:
+        raise RuntimeError("SendGrid did not accept any emails.")
 
 
 if __name__ == "__main__":
