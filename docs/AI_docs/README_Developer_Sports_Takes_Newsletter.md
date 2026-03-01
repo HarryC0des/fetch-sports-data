@@ -81,13 +81,19 @@ scrapers → artifacts → fact extraction → LLM → takes → email delivery
 ### 1. Fetch Game IDs
 - Hits ESPN scoreboard API
 - Saves game IDs as a **GitHub Actions artifact**
-- Output path: `/tmp/game_ids.json`
+- Output path: `artifacts/game_ids.json`
 
 ### 2. Fetch Game Recaps
 - Scrapes ESPN recap pages
 - Extracts recap text
 - Saves output as a **GitHub Actions artifact**
-- Output path: `/tmp/recaps.json`
+- Output path: `artifacts/recaps.json`
+
+### 2b. Fetch Boxscores
+- Scrapes ESPN boxscore pages
+- Extracts `div.Card.Card__TableTopBorder` HTML
+- Saves output as a **GitHub Actions artifact**
+- Output path: `artifacts/boxscores.json`
 
 ### 3. Fact Extraction
 - Reads recap artifact
@@ -130,7 +136,7 @@ LLM calls are made **per game**, not per batch, to control token usage.
 Artifacts are used to pass data between workflows **without committing to git**.
 
 Example:
-- `recaps.json` is generated, uploaded, consumed, and discarded.
+- `recaps.json` and `boxscores.json` are generated, uploaded, consumed, and discarded.
 
 Benefits:
 - Clean repo
