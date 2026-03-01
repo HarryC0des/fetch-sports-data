@@ -36,6 +36,12 @@ jobs:
           OUTPUT_PATH: ${{ github.workspace }}/artifacts/recaps.json
         run: python -m src.ingest.fetch_game_recaps
 
+      - name: Fetch boxscore pages
+        env:
+          GAME_IDS_PATH: ${{ github.workspace }}/artifacts/game_ids.json
+          OUTPUT_PATH: ${{ github.workspace }}/artifacts/boxscores.json
+        run: python src/ingest/fetch_boxscores.py
+
       - name: Upload game ID artifact
         uses: actions/upload-artifact@v4
         with:
@@ -48,4 +54,11 @@ jobs:
         with:
           name: recaps
           path: artifacts/recaps.json
+          if-no-files-found: error
+
+      - name: Upload boxscores artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: boxscores
+          path: artifacts/boxscores.json
           if-no-files-found: error
