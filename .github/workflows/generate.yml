@@ -32,6 +32,14 @@ jobs:
           path: artifacts/recaps
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download boxscores artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: boxscores
+          run-id: ${{ github.event.workflow_run.id }}
+          path: artifacts/boxscores
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Prepare recaps input
         run: |
           ARTIFACT_ROOT="${GITHUB_WORKSPACE}/artifacts/recaps"
@@ -41,6 +49,15 @@ jobs:
             echo "::error::Recaps artifact not found in workflow run ${{ github.event.workflow_run.id }}"
             ls -lah "${GITHUB_WORKSPACE}/artifacts"
             exit 1
+          fi
+
+      - name: Prepare boxscores input
+        run: |
+          ARTIFACT_ROOT="${GITHUB_WORKSPACE}/artifacts/boxscores"
+          if [ -f "${ARTIFACT_ROOT}/boxscores.json" ]; then
+            cp "${ARTIFACT_ROOT}/boxscores.json" /tmp/boxscores.json
+          else
+            echo "::warning::Boxscores artifact not found in workflow run ${{ github.event.workflow_run.id }}"
           fi
 
       - name: Install dependencies
@@ -54,6 +71,7 @@ jobs:
       - name: Generate takes
         env:
           FACTS_PATH: /tmp/facts.json
+          BOX_SCORES_PATH: /tmp/boxscores.json
           OPEN_ROUTER_KEY: ${{ secrets.OPEN_ROUTER_KEY }}
           SUPABASE_URL: https://hzncchogxeyexnwgurkk.supabase.co
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}

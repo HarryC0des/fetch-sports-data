@@ -102,6 +102,7 @@ scrapers → artifacts → fact extraction → LLM → takes → email delivery
 
 ### 4. LLM Take Generation
 - Reads facts artifact
+- Optionally uses boxscore artifact text
 - Generates takes based on prompt templates
 - Outputs takes artifact
 

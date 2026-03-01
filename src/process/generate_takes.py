@@ -86,6 +86,7 @@ def main():
     run_date = resolve_run_date()
     input_path = get_env("FACTS_PATH", default="/tmp/facts.json")
     output_path = get_env("OUTPUT_PATH", default="/tmp/takes.json")
+    boxscores_path = get_env("BOX_SCORES_PATH", default="/tmp/boxscores.json")
     api_url = get_env("OPEN_ROUTER_API_URL", default=API_URL_DEFAULT)
     model = get_env("OPEN_ROUTER_MODEL", default=MODEL_DEFAULT)
     api_key = get_env("OPEN_ROUTER_KEY", required=True)
@@ -109,6 +110,7 @@ def main():
     disclaimer = get_env("TAKE_DISCLAIMER", default="Based on ESPN recap text.")
     failure_threshold = float(get_env("FAILURE_ALERT_THRESHOLD", default="0.5"))
     pause_seconds = float(get_env("LLM_REQUEST_DELAY_SECONDS", default="0"))
+    max_boxscore_chars = int(get_env("MAX_BOXSCORE_CHARS", default="1200"))
 
     log_start("generate_takes", run_id, run_date)
 
@@ -119,6 +121,12 @@ def main():
     facts_payload = load_json(input_path)
     games = facts_payload.get("games", [])
     log_info(f"Loaded {len(games)} fact groups from {input_path}")
+    try:
+        boxscores_payload = load_json(boxscores_path)
+        log_info(f"Loaded boxscores from {boxscores_path}")
+    except Exception:
+        boxscores_payload = {}
+        log_warning(f"Boxscores not found at {boxscores_path}; continuing without.")
 
     users = fetch_supabase_rows(
         supabase_url, supabase_key, users_table, users_query
@@ -182,6 +190,7 @@ def main():
             errors.append({"game_id": game.get("game_id"), "error": "missing_facts"})
             continue
 
+        game_id = str(game.get("game_id"))
         game_aliases = game.get("team_aliases") or game.get("teams") or []
         focus_teams = []
         for team_name in team_style_map:
@@ -193,6 +202,12 @@ def main():
             continue
 
         considered_games += 1
+        boxscore_entry = boxscores_payload.get(game_id, {})
+        raw_boxscore_text = (boxscore_entry.get("text") or "").strip()
+        if raw_boxscore_text and max_boxscore_chars > 0:
+            boxscore_text = raw_boxscore_text[:max_boxscore_chars]
+        else:
+            boxscore_text = ""
 
         for focus_team in focus_teams:
             required_styles = team_style_map.get(focus_team, set())
@@ -213,6 +228,7 @@ def main():
                     audience=audience,
                     disclaimer=disclaimer,
                     focus_team=focus_team,
+                    boxscore_text=boxscore_text,
                 )
                 messages = [
                     {"role": "system", "content": system_prompt},
